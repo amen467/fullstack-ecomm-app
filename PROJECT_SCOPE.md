@@ -17,7 +17,7 @@ Add/edit/delete products
 View orders
 Manage inventory/status
 
-## 2. Suggested stack:
+## 2. Tech stack:
 
 ### Frontend:
 React
@@ -157,7 +157,6 @@ GET  /api/orders/:id
 
 ## 7. Development milestones
 ### Milestone 1: Project setup
-Create monorepo or separate client and server
 Configure TypeScript
 Add PostgreSQL with Docker
 Set up Prisma schema
