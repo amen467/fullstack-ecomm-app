@@ -90,8 +90,56 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/login", (_req, res) => {
-  res.status(501).json({ error: "Not implemented" });
+router.post("/login", async (req, res) => {
+  if (!prisma) {
+    return res.status(503).json({ error: "Database is not available" });
+  }
+
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    return res.status(500).json({ error: "JWT secret is not configured" });
+  }
+
+  const { email, password } = req.body as {
+    email?: unknown;
+    password?: unknown;
+  };
+
+  if (typeof email !== "string" || !isValidEmail(email)) {
+    return res.status(400).json({ error: "Valid email is required" });
+  }
+
+  if (typeof password !== "string" || password.length === 0) {
+    return res.status(400).json({ error: "Password is required" });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      passwordHash: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user) {
+    return res.status(401).json({ error: "Invalid email or password" });
+  }
+
+  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+
+  if (!passwordMatches) {
+    return res.status(401).json({ error: "Invalid email or password" });
+  }
+
+  const safeUser = toSafeUser(user);
+  const token = signAuthToken(toAuthTokenPayload(safeUser), jwtSecret);
+
+  res.json({ token, user: safeUser });
 });
 
 router.post("/logout", (_req, res) => {
@@ -104,6 +152,19 @@ router.get("/me", (_req, res) => {
 
 function signAuthToken(payload: SignableAuthPayload, jwtSecret: string) {
   return jwt.sign(payload, jwtSecret, { expiresIn: TOKEN_EXPIRES_IN });
+}
+
+function toAuthTokenPayload(user: { id: number; email: string; role: UserRole }): SignableAuthPayload {
+  return {
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+  };
+}
+
+function toSafeUser<User extends { passwordHash?: string }>(user: User) {
+  const { passwordHash: _passwordHash, ...safeUser } = user;
+  return safeUser;
 }
 
 function isValidEmail(email: string) {
