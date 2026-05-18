@@ -1,24 +1,9 @@
 // server/src/server.ts
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-import { PrismaClient } from "./generated/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-dotenv.config();
+import { prisma } from "./lib/prisma.js";
 
 const app = express();
-
-// Initialize Prisma Client with PostgreSQL adapter
-let prisma: any;
-try {
-  const connectionString = process.env.DATABASE_URL || "";
-  const adapter = new PrismaPg({ connectionString });
-  prisma = new PrismaClient({ adapter });
-} catch (error) {
-  console.warn("Failed to initialize Prisma Client (database may not be running yet)");
-  // Continue without Prisma for now
-}
 
 // Middleware
 app.use(cors());

@@ -155,26 +155,30 @@ GET  /api/orders/:id
 /admin/products
 /admin/orders
 
+
+
 ## 7. Development milestones
+✓ = done
+
 ### Milestone 1: Project setup
-Configure TypeScript
-Add PostgreSQL with Docker
-Set up Prisma schema
-Add basic health check API
+✓ Configure TypeScript
+✓ Add PostgreSQL with Docker
+✓ Set up Prisma schema
+✓ Add basic health check API
 
-### Milestone 2: Product catalog
-Seed categories and products
-Build product list API
-Build product detail API
-Create frontend product grid
-Add search/filter UI
-
-### Milestone 3: Auth
+### Milestone 2: Auth
 Register/login endpoints
 Password hashing
 JWT/session handling
 Protected routes
 User role support
+
+### Milestone 3: Product catalog
+Seed categories and products
+Build product list API
+Build product detail API
+Create frontend product grid
+Add search/filter UI
 
 ### Milestone 4: Cart
 Add item to cart
