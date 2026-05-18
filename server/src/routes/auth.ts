@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { UserRole } from "../generated/enums.js";
 import { prisma } from "../lib/prisma.js";
+import { requireAuth } from "../middleware/auth.js";
 import type { AuthTokenPayload } from "../types/auth.js";
 
 const router = Router();
@@ -146,8 +147,31 @@ router.post("/logout", (_req, res) => {
   res.status(501).json({ error: "Not implemented" });
 });
 
-router.get("/me", (_req, res) => {
-  res.status(501).json({ error: "Not implemented" });
+router.get("/me", requireAuth, async (req, res) => {
+  if (!prisma) {
+    return res.status(503).json({ error: "Database is not available" });
+  }
+
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user) {
+    return res.status(401).json({ error: "Invalid authentication token" });
+  }
+
+  res.json({ user });
 });
 
 function signAuthToken(payload: SignableAuthPayload, jwtSecret: string) {
