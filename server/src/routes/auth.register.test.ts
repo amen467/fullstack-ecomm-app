@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, describe, it, type TestContext } from "node:test";
-import { createServer, request, type Server } from "node:http";
+import { after, before, beforeEach, describe, it } from "node:test";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { app } from "../app.js";
 import { prisma } from "../lib/prisma.js";
 import { UserRole } from "../generated/enums.js";
+import {
+  canUseDatabase,
+  deleteTestUsers,
+  disconnectTestDatabase,
+  requestApp,
+  skipIfDatabaseUnavailable,
+} from "../test/authTestHelpers.js";
 
 const TEST_JWT_SECRET = "register-test-secret";
 const TEST_USER_EMAILS = [
@@ -13,8 +18,6 @@ const TEST_USER_EMAILS = [
   "duplicate@example.test",
   "normalized@example.test",
 ];
-const DATABASE_TIMEOUT_MS = 5_000;
-const REQUEST_TIMEOUT_MS = 5_000;
 
 let hasTestDatabase = false;
 
@@ -29,19 +32,19 @@ describe("POST /api/auth/register", () => {
       return;
     }
 
-    await deleteTestUsers();
+    await deleteTestUsers(TEST_USER_EMAILS);
     process.env.JWT_SECRET = TEST_JWT_SECRET;
   });
 
   after(async () => {
-    if (hasTestDatabase && prisma) {
-      await deleteTestUsers();
-      await prisma.$disconnect();
+    if (hasTestDatabase) {
+      await deleteTestUsers(TEST_USER_EMAILS);
+      await disconnectTestDatabase(hasTestDatabase);
     }
   });
 
   it("creates a user, hashes the password, and returns a JWT plus safe user payload", async (t) => {
-    if (skipIfDatabaseUnavailable(t)) {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
     }
 
@@ -79,7 +82,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("trims name and normalizes email before storing the user", async (t) => {
-    if (skipIfDatabaseUnavailable(t)) {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
     }
 
@@ -107,7 +110,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("rejects duplicate email registrations", async (t) => {
-    if (skipIfDatabaseUnavailable(t)) {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
     }
 
@@ -128,7 +131,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("rejects a missing or blank name", async (t) => {
-    if (skipIfDatabaseUnavailable(t)) {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
     }
 
@@ -143,7 +146,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("rejects an invalid email", async (t) => {
-    if (skipIfDatabaseUnavailable(t)) {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
     }
 
@@ -158,7 +161,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("rejects a short password", async (t) => {
-    if (skipIfDatabaseUnavailable(t)) {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
     }
 
@@ -173,7 +176,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("requires JWT_SECRET", async (t) => {
-    if (skipIfDatabaseUnavailable(t)) {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
     }
 
@@ -191,126 +194,11 @@ describe("POST /api/auth/register", () => {
 });
 
 async function postRegister(body: RegisterRequest) {
-  return requestApp("POST", "/api/auth/register", body);
-}
-
-async function requestApp(method: string, path: string, body: unknown) {
-  const server = createServer(app);
-
-  try {
-    await listen(server);
-    const address = server.address();
-
-    if (!address || typeof address === "string") {
-      throw new Error("Failed to bind test server to a local port");
-    }
-
-    const bodyText = JSON.stringify(body);
-
-    return await new Promise<TestResponse>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        req.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`));
-      }, REQUEST_TIMEOUT_MS);
-
-      const req = request(
-        {
-          host: "127.0.0.1",
-          port: address.port,
-          path,
-          method,
-          headers: {
-            "connection": "close",
-            "content-type": "application/json",
-            "content-length": Buffer.byteLength(bodyText),
-          },
-        },
-        (res) => {
-          const chunks: Buffer[] = [];
-
-          res.on("data", (chunk: Buffer) => {
-            chunks.push(chunk);
-          });
-
-          res.on("end", () => {
-            clearTimeout(timeout);
-            resolve({
-              status: res.statusCode ?? 0,
-              json: () => JSON.parse(Buffer.concat(chunks).toString("utf8")),
-            });
-          });
-        },
-      );
-
-      req.on("error", (error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-
-      req.end(bodyText);
-    });
-  } finally {
-    server.closeAllConnections();
-    await close(server);
-  }
-}
-
-function listen(server: Server) {
-  return new Promise<void>((resolve, reject) => {
-    server.listen(0, "127.0.0.1", resolve);
-    server.on("error", reject);
+  return requestApp({
+    method: "POST",
+    path: "/api/auth/register",
+    body,
   });
-}
-
-function close(server: Server) {
-  return new Promise<void>((resolve, reject) => {
-    server.close((error) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      resolve();
-    });
-  });
-}
-
-function skipIfDatabaseUnavailable(t: TestContext) {
-  if (!hasTestDatabase) {
-    t.skip("DATABASE_URL is not configured or the test database is unavailable");
-    return true;
-  }
-
-  return false;
-}
-
-async function canUseDatabase() {
-  if (!process.env.DATABASE_URL || !prisma) {
-    return false;
-  }
-
-  try {
-    await withTimeout(prisma.$queryRaw`SELECT 1`, DATABASE_TIMEOUT_MS);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function deleteTestUsers() {
-  await prisma?.user.deleteMany({
-    where: {
-      email: { in: TEST_USER_EMAILS },
-    },
-  });
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
-  return Promise.race([
-    promise,
-    new Promise<never>((_resolve, reject) => {
-      setTimeout(() => reject(new Error("Operation timed out")), timeoutMs);
-    }),
-  ]);
 }
 
 type RegisterRequest = {
@@ -328,9 +216,4 @@ type RegisterResponse = {
     role: UserRole;
     createdAt: string;
   };
-};
-
-type TestResponse = {
-  status: number;
-  json: () => unknown;
 };

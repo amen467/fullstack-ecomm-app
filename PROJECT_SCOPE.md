@@ -167,11 +167,23 @@ GET  /api/orders/:id
 ✓ Add basic health check API
 
 ### Milestone 2: Auth
-Register/login endpoints
-Password hashing
-JWT/session handling
-Protected routes
-User role support
+✓ Improve test structure
+
+Add authorization middleware
+You have requireAuth, but no role guard yet. Add something like requireRole(UserRole.ADMIN) for product admin/order admin routes. This matters because the project scope includes admin product CRUD and order management.
+
+Centralize validation and error handling
+Right now validation is inline in route handlers. For a small app that’s okay, but before expanding APIs, add a validation helper or schema library and an Express error handler. That avoids repeating try/catch, typeof, and response formatting everywhere.
+
+Harden credential endpoints
+Add rate limiting to POST /register and POST /login. Also consider a stronger password policy, max field lengths, and generic handling for unexpected Prisma/database failures in login/register.
+
+Move auth helpers out of the route file
+Token signing, safe user selection, email normalization, and password hashing should become small auth utilities/services. That will make cart/orders/admin routes easier to build without bloating route files.
+
+Add migration workflow
+The DB needed prisma db push manually. For a real app, add Prisma migrations and document the setup command. This is important before more schema changes.
+
 
 ### Milestone 3: Product catalog
 Seed categories and products
