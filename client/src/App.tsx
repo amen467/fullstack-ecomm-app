@@ -1,10 +1,19 @@
-import { Outlet, Link } from 'react-router-dom'
-import { useSelector } from 'react-redux'
-import type { RootState } from './store/store'
+import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import type { AppDispatch, RootState } from './store/store'
+import { logout } from './store/slices/authSlice'
 import './App.css'
 
 function App() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth)
+  const dispatch = useDispatch<AppDispatch>()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    dispatch(logout())
+    navigate('/')
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -32,7 +41,11 @@ function App() {
                   </Link>
                 )}
                 <span className="text-gray-600">{user?.name}</span>
-                <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                >
                   Logout
                 </button>
               </div>

@@ -4,6 +4,7 @@ import cors from "cors";
 import { prisma } from "./lib/prisma.js";
 
 const app = express();
+const HEALTH_CHECK_TIMEOUT_MS = 5_000;
 
 // Middleware
 app.use(cors());
@@ -15,7 +16,7 @@ app.get("/api/health", async (_req, res) => {
     return res.status(500).json({ status: "error", database: "not_initialized" });
   }
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await withTimeout(prisma.$queryRaw`SELECT 1`, HEALTH_CHECK_TIMEOUT_MS);
     res.json({ status: "ok", database: "connected" });
   } catch (error) {
     res.status(500).json({ status: "error", database: "disconnected" });
@@ -53,3 +54,12 @@ app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
 });
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_resolve, reject) => {
+      setTimeout(() => reject(new Error("Operation timed out")), timeoutMs);
+    }),
+  ]);
+}
