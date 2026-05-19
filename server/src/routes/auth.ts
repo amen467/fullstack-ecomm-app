@@ -143,10 +143,6 @@ router.post("/login", async (req, res) => {
   res.json({ token, user: safeUser });
 });
 
-// router.post("/logout", (_req, res) => {
-//   res.status(501).json({ error: "Not implemented" });
-// });
-
 router.get("/me", requireAuth, async (req, res) => {
   if (!prisma) {
     return res.status(503).json({ error: "Database is not available" });
