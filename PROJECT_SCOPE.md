@@ -169,6 +169,8 @@ GET  /api/orders/:id
 ### Milestone 2: Auth
 ✓ Improve test structure
 
+✓ Move auth helpers out of the route file
+
 Add authorization middleware
 You have requireAuth, but no role guard yet. Add something like requireRole(UserRole.ADMIN) for product admin/order admin routes. This matters because the project scope includes admin product CRUD and order management.
 
@@ -177,9 +179,6 @@ Right now validation is inline in route handlers. For a small app that’s okay,
 
 Harden credential endpoints
 Add rate limiting to POST /register and POST /login. Also consider a stronger password policy, max field lengths, and generic handling for unexpected Prisma/database failures in login/register.
-
-Move auth helpers out of the route file
-Token signing, safe user selection, email normalization, and password hashing should become small auth utilities/services. That will make cart/orders/admin routes easier to build without bloating route files.
 
 Add migration workflow
 The DB needed prisma db push manually. For a real app, add Prisma migrations and document the setup command. This is important before more schema changes.
@@ -258,4 +257,4 @@ ecommerce-mock/
 
 Best order:
 
-Database → Products API → Product UI → Auth → Cart → Checkout → Orders → Admin
+Database → Auth → Products API → Product UI → Cart → Checkout → Orders → Admin

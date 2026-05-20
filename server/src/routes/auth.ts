@@ -1,16 +1,19 @@
 import { Router } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { UserRole } from "../generated/enums.js";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import type { AuthTokenPayload } from "../types/auth.js";
+import {
+  hashPassword,
+  isUniqueConstraintError,
+  isValidEmail,
+  normalizeEmail,
+  signAuthToken,
+  toAuthTokenPayload,
+  toSafeUser,
+  verifyPassword,
+} from "../services/auth.js";
 
 const router = Router();
-
-const PASSWORD_SALT_ROUNDS = 10;
-const TOKEN_EXPIRES_IN = "7d";
-type SignableAuthPayload = Pick<AuthTokenPayload, "userId" | "email" | "role">;
 
 router.post("/register", async (req, res) => {
   if (!prisma) {
@@ -41,7 +44,7 @@ router.post("/register", async (req, res) => {
     return res.status(400).json({ error: "Password must be at least 8 characters" });
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
 
   const existingUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
@@ -52,7 +55,7 @@ router.post("/register", async (req, res) => {
     return res.status(409).json({ error: "Email is already registered" });
   }
 
-  const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
+  const passwordHash = await hashPassword(password);
 
   try {
     const user = await prisma.user.create({
@@ -71,14 +74,7 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    const token = signAuthToken(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      jwtSecret,
-    );
+    const token = signAuthToken(toAuthTokenPayload(user), jwtSecret);
 
     res.status(201).json({ token, user });
   } catch (error) {
@@ -116,7 +112,7 @@ router.post("/login", async (req, res) => {
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: email.trim().toLowerCase() },
+    where: { email: normalizeEmail(email) },
     select: {
       id: true,
       name: true,
@@ -131,7 +127,7 @@ router.post("/login", async (req, res) => {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
-  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+  const passwordMatches = await verifyPassword(password, user.passwordHash);
 
   if (!passwordMatches) {
     return res.status(401).json({ error: "Invalid email or password" });
@@ -169,35 +165,5 @@ router.get("/me", requireAuth, async (req, res) => {
 
   res.json({ user });
 });
-
-function signAuthToken(payload: SignableAuthPayload, jwtSecret: string) {
-  return jwt.sign(payload, jwtSecret, { expiresIn: TOKEN_EXPIRES_IN });
-}
-
-function toAuthTokenPayload(user: { id: number; email: string; role: UserRole }): SignableAuthPayload {
-  return {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  };
-}
-
-function toSafeUser<User extends { passwordHash?: string }>(user: User) {
-  const { passwordHash: _passwordHash, ...safeUser } = user;
-  return safeUser;
-}
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
-function isUniqueConstraintError(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "P2002"
-  );
-}
 
 export default router;
