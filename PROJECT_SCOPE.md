@@ -168,13 +168,9 @@ GET  /api/orders/:id
 
 ### Milestone 2: Auth
 ✓ Improve test structure
-
 ✓ Move auth helpers out of the route file
-
 ✓ Add authorization middleware
-
-Centralize validation and error handling
-Right now validation is inline in route handlers. For a small app that’s okay, but before expanding APIs, add a validation helper or schema library and an Express error handler. That avoids repeating try/catch, typeof, and response formatting everywhere.
+✓ Centralize validation and error handling
 
 Harden credential endpoints
 Add rate limiting to POST /register and POST /login. Also consider a stronger password policy, max field lengths, and generic handling for unexpected Prisma/database failures in login/register.

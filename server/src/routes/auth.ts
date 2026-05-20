@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { AuthError, AppError, ConflictError, ServiceUnavailableError } from "../errors/http.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
+import { authRateLimit, loginRateLimit, registerRateLimit } from "../middleware/rateLimit.js";
 import { validateBody } from "../middleware/validation.js";
 import {
   hashPassword,
@@ -16,7 +17,9 @@ import { loginSchema, registerSchema, type LoginBody, type RegisterBody } from "
 
 const router = Router();
 
-router.post("/register", validateBody(registerSchema), asyncHandler(async (req, res) => {
+router.use(authRateLimit);
+
+router.post("/register", registerRateLimit, validateBody(registerSchema), asyncHandler(async (req, res) => {
   if (!prisma) {
     throw new ServiceUnavailableError("Database is not available");
   }
@@ -61,7 +64,7 @@ router.post("/register", validateBody(registerSchema), asyncHandler(async (req, 
   res.status(201).json({ token, user });
 }));
 
-router.post("/login", validateBody(loginSchema), asyncHandler(async (req, res) => {
+router.post("/login", loginRateLimit, validateBody(loginSchema), asyncHandler(async (req, res) => {
   if (!prisma) {
     throw new ServiceUnavailableError("Database is not available");
   }
