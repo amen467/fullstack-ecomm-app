@@ -1,7 +1,8 @@
 import { createServer, request, type Server } from "node:http";
 import type { TestContext } from "node:test";
 import bcrypt from "bcrypt";
-import { app } from "../app.js";
+import type { Express } from "express";
+import { app as defaultApp } from "../app.js";
 import { UserRole } from "../generated/enums.js";
 import { prisma } from "../lib/prisma.js";
 
@@ -9,7 +10,7 @@ const DEFAULT_DATABASE_TIMEOUT_MS = 5_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
 
 export async function requestApp(options: RequestAppOptions) {
-  const server = createServer(app);
+  const server = createServer(options.app ?? defaultApp);
 
   try {
     await listen(server);
@@ -160,6 +161,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
 }
 
 type RequestAppOptions = {
+  app?: Express;
   method: string;
   path: string;
   body?: unknown;

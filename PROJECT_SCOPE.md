@@ -171,8 +171,7 @@ GET  /api/orders/:id
 
 ✓ Move auth helpers out of the route file
 
-Add authorization middleware
-You have requireAuth, but no role guard yet. Add something like requireRole(UserRole.ADMIN) for product admin/order admin routes. This matters because the project scope includes admin product CRUD and order management.
+✓ Add authorization middleware
 
 Centralize validation and error handling
 Right now validation is inline in route handlers. For a small app that’s okay, but before expanding APIs, add a validation helper or schema library and an Express error handler. That avoids repeating try/catch, typeof, and response formatting everywhere.

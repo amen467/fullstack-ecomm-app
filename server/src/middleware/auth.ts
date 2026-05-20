@@ -41,6 +41,20 @@ export const requireAuth: RequestHandler = (req, res, next) => {
   }
 };
 
+export function requireRole(...allowedRoles: UserRole[]): RequestHandler {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    next();
+  };
+}
+
 function isAuthTokenPayload(payload: string | JwtPayload): payload is AuthTokenPayload {
   if (typeof payload !== "object" || payload === null) {
     return false;
@@ -52,4 +66,3 @@ function isAuthTokenPayload(payload: string | JwtPayload): payload is AuthTokenP
     (payload.role === UserRole.USER || payload.role === UserRole.ADMIN)
   );
 }
-
