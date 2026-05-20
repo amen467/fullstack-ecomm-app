@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import { prisma } from "./lib/prisma.js";
+import { NotFoundError } from "./errors/http.js";
+import { errorHandler } from "./middleware/errors.js";
 import authRouter from "./routes/auth.js";
 import productsRouter from "./routes/products.js";
 import cartRouter from "./routes/cart.js";
@@ -19,10 +21,11 @@ app.get("/api/health", async (_req, res) => {
   if (!prisma) {
     return res.status(500).json({ status: "error", database: "not_initialized" });
   }
+
   try {
     await withTimeout(prisma.$queryRaw`SELECT 1`, HEALTH_CHECK_TIMEOUT_MS);
     res.json({ status: "ok", database: "connected" });
-  } catch (error) {
+  } catch {
     res.status(500).json({ status: "error", database: "disconnected" });
   }
 });
@@ -34,9 +37,11 @@ app.use("/api/cart", cartRouter);
 app.use("/api/orders", ordersRouter);
 
 // 404 handler
-app.use((_req, res) => {
-  res.status(404).json({ error: "Not Found" });
+app.use((_req, _res, next) => {
+  next(new NotFoundError());
 });
+
+app.use(errorHandler);
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
   return Promise.race([

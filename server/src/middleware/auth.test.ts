@@ -4,6 +4,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import { UserRole } from "../generated/enums.js";
 import { requireAuth, requireRole } from "./auth.js";
+import { errorHandler } from "./errors.js";
 import { requestApp } from "../test/authTestHelpers.js";
 
 const TEST_JWT_SECRET = "middleware-auth-test-secret";
@@ -71,6 +72,8 @@ function buildTestApp() {
   app.get("/role-only", requireRole(UserRole.ADMIN), (_req, res) => {
     res.json({ ok: true });
   });
+
+  app.use(errorHandler);
 
   return app;
 }

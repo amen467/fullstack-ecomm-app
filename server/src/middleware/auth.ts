@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
+import { AppError, AuthError, ForbiddenError } from "../errors/http.js";
 import { UserRole } from "../generated/enums.js";
 import type { AuthTokenPayload } from "../types/auth.js";
 
@@ -7,26 +8,26 @@ export const requireAuth: RequestHandler = (req, res, next) => {
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret) {
-    return res.status(500).json({ error: "JWT secret is not configured" });
+    throw new AppError(500, "JWT secret is not configured");
   }
 
   const authHeader = req.header("authorization");
 
   if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Authentication required" });
+    throw new AuthError();
   }
 
   const token = authHeader.slice("Bearer ".length).trim();
 
   if (!token) {
-    return res.status(401).json({ error: "Authentication required" });
+    throw new AuthError();
   }
 
   try {
     const payload = jwt.verify(token, jwtSecret);
 
     if (!isAuthTokenPayload(payload)) {
-      return res.status(401).json({ error: "Invalid authentication token" });
+      throw new AuthError("Invalid authentication token");
     }
 
     req.user = {
@@ -37,18 +38,18 @@ export const requireAuth: RequestHandler = (req, res, next) => {
 
     next();
   } catch {
-    return res.status(401).json({ error: "Invalid authentication token" });
+    throw new AuthError("Invalid authentication token");
   }
 };
 
 export function requireRole(...allowedRoles: UserRole[]): RequestHandler {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ error: "Authentication required" });
+      throw new AuthError();
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ error: "Forbidden" });
+      throw new ForbiddenError();
     }
 
     next();
