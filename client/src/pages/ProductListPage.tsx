@@ -1,32 +1,70 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { productsAPI, type Product } from '../api/client';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { productsAPI, type Product, type ProductCategory } from '../api/client';
 
 export default function ProductListPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<ProductCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const categoryFilter = searchParams.get('category')?.trim() ?? '';
+  const searchFilter = searchParams.get('search')?.trim() ?? '';
+  const hasActiveFilters = categoryFilter.length > 0 || searchFilter.length > 0;
+
+  const activeCategoryName = useMemo(() => {
+    return categoryOptions.find((category) => category.slug === categoryFilter)?.name ?? categoryFilter;
+  }, [categoryFilter, categoryOptions]);
 
   const retryLoadProducts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await productsAPI.getAll();
+      const response = await productsAPI.getAll(buildProductQuery(categoryFilter, searchFilter));
       setProducts(response.data.products);
     } catch {
       setError('We could not load products right now. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  }, [categoryFilter, searchFilter]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCategories() {
+      try {
+        const response = await productsAPI.getAll();
+
+        if (isMounted) {
+          setCategoryOptions(extractCategories(response.data.products));
+        }
+      } catch {
+        if (isMounted) {
+          setCategoryOptions([]);
+        }
+      }
+    }
+
+    void loadCategories();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadProducts() {
+      setIsLoading(true);
+      setError(null);
+
       try {
-        const response = await productsAPI.getAll();
+        const response = await productsAPI.getAll(buildProductQuery(categoryFilter, searchFilter));
 
         if (isMounted) {
           setProducts(response.data.products);
@@ -47,22 +85,121 @@ export default function ProductListPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [categoryFilter, searchFilter]);
+
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const submittedSearch = String(formData.get('search') ?? '').trim();
+
+    updateFilters({ search: submittedSearch });
+  }
+
+  function handleCategoryChange(categorySlug: string) {
+    updateFilters({ category: categorySlug });
+  }
+
+  function handleClearFilters() {
+    setSearchParams({});
+  }
+
+  function updateFilters(updates: { category?: string; search?: string }) {
+    const nextParams = new URLSearchParams(searchParams);
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) {
+        nextParams.set(key, value);
+      } else {
+        nextParams.delete(key);
+      }
+    }
+
+    setSearchParams(nextParams);
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="mb-6 text-4xl font-bold">Products</h1>
       <div className="flex flex-col gap-8 lg:flex-row">
-        {/* Sidebar filters */}
         <aside className="lg:w-64">
-          <div className="bg-gray-100 p-4 rounded-lg">
-            <h2 className="text-xl font-semibold mb-4">Filters</h2>
-            <p className="text-gray-600">Filter options coming soon...</p>
+          <div className="rounded-lg bg-gray-100 p-4">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold text-gray-900">Filters</h2>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleSearchSubmit} className="mb-6">
+              <label htmlFor="product-search" className="mb-2 block text-sm font-medium text-gray-700">
+                Search
+              </label>
+              <div className="flex gap-2">
+                <input
+                  key={searchFilter}
+                  id="product-search"
+                  name="search"
+                  type="search"
+                  defaultValue={searchFilter}
+                  placeholder="Search products"
+                  className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                />
+                <button
+                  type="submit"
+                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Go
+                </button>
+              </div>
+            </form>
+
+            <fieldset>
+              <legend className="mb-3 text-sm font-medium text-gray-700">Category</legend>
+              <div className="space-y-2">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="radio"
+                    name="category"
+                    checked={categoryFilter === ''}
+                    onChange={() => handleCategoryChange('')}
+                    className="h-4 w-4 text-blue-600"
+                  />
+                  All categories
+                </label>
+
+                {categoryOptions.map((category) => (
+                  <label key={category.id} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="radio"
+                      name="category"
+                      checked={categoryFilter === category.slug}
+                      onChange={() => handleCategoryChange(category.slug)}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    {category.name}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           </div>
         </aside>
 
-        {/* Product grid */}
         <main className="flex-1">
+          {hasActiveFilters && (
+            <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+              Showing products
+              {categoryFilter && <> in <span className="font-semibold">{activeCategoryName}</span></>}
+              {searchFilter && <> matching <span className="font-semibold">"{searchFilter}"</span></>}
+            </div>
+          )}
+
           {isLoading && <ProductGridSkeleton />}
 
           {!isLoading && error && (
@@ -80,8 +217,14 @@ export default function ProductListPage() {
 
           {!isLoading && !error && products.length === 0 && (
             <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-              <h2 className="mb-2 text-2xl font-semibold text-gray-900">No products found</h2>
-              <p className="text-gray-600">The catalog is empty right now.</p>
+              <h2 className="mb-2 text-2xl font-semibold text-gray-900">
+                {hasActiveFilters ? 'No matching products' : 'No products found'}
+              </h2>
+              <p className="text-gray-600">
+                {hasActiveFilters
+                  ? 'Try a different search or category filter.'
+                  : 'The catalog is empty right now.'}
+              </p>
             </div>
           )}
 
@@ -112,6 +255,23 @@ function ProductGridSkeleton() {
       ))}
     </div>
   );
+}
+
+function buildProductQuery(category: string, search: string) {
+  return {
+    ...(category ? { category } : {}),
+    ...(search ? { search } : {}),
+  };
+}
+
+function extractCategories(products: Product[]) {
+  const categories = new Map<string, ProductCategory>();
+
+  for (const product of products) {
+    categories.set(product.category.slug, product.category);
+  }
+
+  return [...categories.values()].sort((first, second) => first.name.localeCompare(second.name));
 }
 
 function ProductCard({ product }: { product: Product }) {

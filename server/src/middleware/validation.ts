@@ -28,7 +28,16 @@ function validateRequestPart<Schema extends z.ZodType>(
       return;
     }
 
-    req[part] = result.data;
+    if (part === "query") {
+      Object.defineProperty(req, "query", {
+        value: result.data,
+        configurable: true,
+        enumerable: true,
+      });
+    } else {
+      req[part] = result.data;
+    }
+
     next();
   };
 }

@@ -3,17 +3,24 @@ import type { Prisma } from "../generated/client.js";
 import { NotFoundError, ServiceUnavailableError } from "../errors/http.js";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
-import { validateParams } from "../middleware/validation.js";
-import { productParamsSchema, type ProductParams } from "../validation/products.js";
+import { validateParams, validateQuery } from "../middleware/validation.js";
+import {
+  productListQuerySchema,
+  productParamsSchema,
+  type ProductListQuery,
+  type ProductParams,
+} from "../validation/products.js";
 
 const router = Router();
 
-router.get("/", asyncHandler(async (_req, res) => {
+router.get("/", validateQuery(productListQuerySchema), asyncHandler(async (req, res) => {
   if (!prisma) {
     throw new ServiceUnavailableError("Database is not available");
   }
 
+  const query = req.query as unknown as ProductListQuery;
   const products = await prisma.product.findMany({
+    where: buildProductListWhere(query),
     orderBy: { id: "asc" },
     select: productSelect,
   });
@@ -76,6 +83,43 @@ function serializeProduct(product: ProductWithCategory) {
     ...product,
     price: product.price.toString(),
   };
+}
+
+function buildProductListWhere(query: ProductListQuery): Prisma.ProductWhereInput {
+  const filters: Prisma.ProductWhereInput[] = [];
+
+  if (query.category) {
+    filters.push({
+      category: {
+        slug: query.category,
+      },
+    });
+  }
+
+  if (query.search) {
+    filters.push({
+      OR: [
+        {
+          name: {
+            contains: query.search,
+            mode: "insensitive",
+          },
+        },
+        {
+          description: {
+            contains: query.search,
+            mode: "insensitive",
+          },
+        },
+      ],
+    });
+  }
+
+  if (filters.length === 0) {
+    return {};
+  }
+
+  return { AND: filters };
 }
 
 type ProductWithCategory = Prisma.ProductGetPayload<{ select: typeof productSelect }>;

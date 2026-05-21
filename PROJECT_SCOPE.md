@@ -183,7 +183,7 @@ GET  /api/orders/:id
 ✓ Add product API validation and tests
 ✓ Wire frontend product grid to API data
 ✓ Wire product detail page to API data
-Add category/search filter UI
+✓ Add category/search filter UI
 
 ### Milestone 4: Cart
 ✓ Create cart API route shell
