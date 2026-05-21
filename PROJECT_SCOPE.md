@@ -178,7 +178,7 @@ GET  /api/orders/:id
 ✓ Seed categories and products
 ✓ Create product API route shell
 ✓ Create product catalog/detail page shells
-Build product list API from Prisma
+✓ Build product list API from Prisma
 Build product detail API from Prisma
 Add product API validation and tests
 Wire frontend product grid to API data
