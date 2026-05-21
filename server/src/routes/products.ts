@@ -1,8 +1,10 @@
 import { Router } from "express";
 import type { Prisma } from "../generated/client.js";
-import { BadRequestError, NotFoundError, ServiceUnavailableError } from "../errors/http.js";
+import { NotFoundError, ServiceUnavailableError } from "../errors/http.js";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
+import { validateParams } from "../middleware/validation.js";
+import { productParamsSchema, type ProductParams } from "../validation/products.js";
 
 const router = Router();
 
@@ -21,16 +23,12 @@ router.get("/", asyncHandler(async (_req, res) => {
   });
 }));
 
-router.get("/:id", asyncHandler(async (req, res) => {
-  const id = Number(req.params.id);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new BadRequestError("Product id must be a positive integer");
-  }
-
+router.get("/:id", validateParams(productParamsSchema), asyncHandler(async (req, res) => {
   if (!prisma) {
     throw new ServiceUnavailableError("Database is not available");
   }
+
+  const { id } = req.params as unknown as ProductParams;
 
   const product = await prisma.product.findUnique({
     where: { id },

@@ -86,14 +86,23 @@ describe("GET /api/products/:id", () => {
     assert.deepEqual(await response.json(), { error: "Product not found" });
   });
 
-  it("rejects an invalid product id", async () => {
-    const response = await requestApp({
-      method: "GET",
-      path: "/api/products/not-a-number",
-    });
+  it("rejects invalid product ids", async () => {
+    const invalidIds = [
+      "not-a-number",
+      "0",
+      "-1",
+      "1.5",
+    ];
 
-    assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), { error: "Product id must be a positive integer" });
+    for (const invalidId of invalidIds) {
+      const response = await requestApp({
+        method: "GET",
+        path: `/api/products/${invalidId}`,
+      });
+
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: "Product id must be a positive integer" });
+    }
   });
 });
 
