@@ -48,8 +48,8 @@ export const productsAPI = {
   getAll: (params?: { category?: string; search?: string }) =>
     client.get('/products', { params }),
   getById: (id: number) => client.get(`/products/${id}`),
-  create: (data: any) => client.post('/products', data),
-  update: (id: number, data: any) => client.patch(`/products/${id}`, data),
+  create: (data: Record<string, unknown>) => client.post('/products', data),
+  update: (id: number, data: Record<string, unknown>) => client.patch(`/products/${id}`, data),
   delete: (id: number) => client.delete(`/products/${id}`),
 };
 
@@ -65,7 +65,7 @@ export const cartAPI = {
 
 // Order endpoints
 export const ordersAPI = {
-  create: (data: any) => client.post('/orders', data),
+  create: (data: Record<string, unknown>) => client.post('/orders', data),
   getAll: () => client.get('/orders'),
   getById: (id: number) => client.get(`/orders/${id}`),
 };

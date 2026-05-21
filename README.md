@@ -56,6 +56,16 @@ Check migration status:
 npm run db:status
 ```
 
+Open a SQL shell inside the Postgres container:
+```bash
+docker exec -it ecomm_postgres psql -U ecomm_user -d ecomm_dev
+```
+
+Example SQL once inside psql:
+SELECT * FROM "Product";
+SELECT * FROM "Category";
+
+
 For deployed environments, apply committed migrations without creating new ones:
 
 ```bash
