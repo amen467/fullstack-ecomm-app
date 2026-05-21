@@ -9,7 +9,12 @@
     "dev:client": "npm run dev --prefix client",
     "dev:server": "npm run dev --prefix server",
     "build:client": "npm run build --prefix client",
-    "build:server": "npm run build --prefix server"
+    "build:server": "npm run build --prefix server",
+    "db:generate": "npm run db:generate --prefix server",
+    "db:migrate": "npm run db:migrate --prefix server",
+    "db:deploy": "npm run db:deploy --prefix server",
+    "db:status": "npm run db:status --prefix server",
+    "db:seed": "npm run seed --prefix server"
   },
   "keywords": [],
   "author": "",

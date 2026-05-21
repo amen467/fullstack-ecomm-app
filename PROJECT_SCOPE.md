@@ -171,13 +171,10 @@ GET  /api/orders/:id
 ✓ Move auth helpers out of the route file
 ✓ Add authorization middleware
 ✓ Centralize validation and error handling
+✓ Harden credential endpoints
 
-Harden credential endpoints
-Add rate limiting to POST /register and POST /login. Also consider a stronger password policy, max field lengths, and generic handling for unexpected Prisma/database failures in login/register.
-
-Add migration workflow
+✓ Add migration workflow
 The DB needed prisma db push manually. For a real app, add Prisma migrations and document the setup command. This is important before more schema changes.
-
 
 ### Milestone 3: Product catalog
 Seed categories and products
