@@ -2,6 +2,27 @@ import axios, { type AxiosInstance } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
+export type ProductCategory = {
+  id: number;
+  name: string;
+  slug: string;
+};
+
+export type Product = {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  imageUrl: string;
+  inventoryCount: number;
+  createdAt: string;
+  category: ProductCategory;
+};
+
+export type ProductListResponse = {
+  products: Product[];
+};
+
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -46,7 +67,7 @@ export const authAPI = {
 // Product endpoints
 export const productsAPI = {
   getAll: (params?: { category?: string; search?: string }) =>
-    client.get('/products', { params }),
+    client.get<ProductListResponse>('/products', { params }),
   getById: (id: number) => client.get(`/products/${id}`),
   create: (data: Record<string, unknown>) => client.post('/products', data),
   update: (id: number, data: Record<string, unknown>) => client.patch(`/products/${id}`, data),
