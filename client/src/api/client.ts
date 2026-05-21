@@ -23,6 +23,10 @@ export type ProductListResponse = {
   products: Product[];
 };
 
+export type ProductDetailResponse = {
+  product: Product;
+};
+
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -68,7 +72,7 @@ export const authAPI = {
 export const productsAPI = {
   getAll: (params?: { category?: string; search?: string }) =>
     client.get<ProductListResponse>('/products', { params }),
-  getById: (id: number) => client.get(`/products/${id}`),
+  getById: (id: number) => client.get<ProductDetailResponse>(`/products/${id}`),
   create: (data: Record<string, unknown>) => client.post('/products', data),
   update: (id: number, data: Record<string, unknown>) => client.patch(`/products/${id}`, data),
   delete: (id: number) => client.delete(`/products/${id}`),
