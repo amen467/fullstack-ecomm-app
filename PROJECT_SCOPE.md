@@ -172,44 +172,63 @@ GET  /api/orders/:id
 ✓ Add authorization middleware
 ✓ Centralize validation and error handling
 ✓ Harden credential endpoints
-
 ✓ Add migration workflow
-The DB needed prisma db push manually. For a real app, add Prisma migrations and document the setup command. This is important before more schema changes.
 
 ### Milestone 3: Product catalog
-Seed categories and products
-Build product list API
-Build product detail API
-Create frontend product grid
-Add search/filter UI
+✓ Seed categories and products
+✓ Create product API route shell
+✓ Create product catalog/detail page shells
+Build product list API from Prisma
+Build product detail API from Prisma
+Add product API validation and tests
+Wire frontend product grid to API data
+Wire product detail page to API data
+Add category/search filter UI
 
 ### Milestone 4: Cart
-Add item to cart
+✓ Create cart API route shell
+✓ Create cart page shell
+Build persisted cart API for logged-in users
+Add item to cart from product detail/list
 Update quantities
 Remove items
-Persist cart for logged-in users
-Calculate subtotal
+Calculate subtotal from persisted cart items
+Sync frontend cart state with API
+Add cart API validation and tests
 
 ### Milestone 5: Checkout and orders
-Mock shipping/payment form
-Convert cart to order
-Store order items
-Show confirmation page
+✓ Create checkout page shell
+✓ Create order confirmation page shell
+✓ Create orders API route shell
+Mock shipping/payment form submission
+Convert cart to order in a transaction
+Store order items with captured unit prices
+Decrement product inventory on checkout
 Clear cart after checkout
+Show real order confirmation data
+Add order API validation and tests
 
 ### Milestone 6: Admin panel
-Product CRUD
+✓ Create admin dashboard/products/orders page shells
+Protect admin routes and APIs by role
+Product CRUD API
+Product create/edit/delete UI
 Inventory management
-Order list
+Order list API
+Order list UI
 Order status updates
+Admin API validation and tests
 
 ### Milestone 7: Polish
 Loading/error states
 Responsive design
 Empty states
-Form validation
-Pagination
-Basic tests
+Frontend form validation
+Pagination for product and order lists
+Consistent API error display
+Client auth logout handling on 401
+Accessibility pass for forms and navigation
+End-to-end happy path check
 
 ## 8. Recommended folder structure
 ecommerce-mock/
