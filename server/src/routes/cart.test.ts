@@ -46,13 +46,33 @@ describe("persisted cart API", () => {
   });
 
   it("requires authentication for cart endpoints", async () => {
-    const response = await requestApp({
-      method: "GET",
-      path: "/api/cart",
-    });
+    const requests = [
+      requestApp({
+        method: "GET",
+        path: "/api/cart",
+      }),
+      requestApp({
+        method: "POST",
+        path: "/api/cart/items",
+        body: { productId: 1, quantity: 1 },
+      }),
+      requestApp({
+        method: "PATCH",
+        path: "/api/cart/items/1",
+        body: { quantity: 1 },
+      }),
+      requestApp({
+        method: "DELETE",
+        path: "/api/cart/items/1",
+      }),
+    ];
 
-    assert.equal(response.status, 401);
-    assert.deepEqual(await response.json(), { error: "Authentication required" });
+    for (const responsePromise of requests) {
+      const response = await responsePromise;
+
+      assert.equal(response.status, 401);
+      assert.deepEqual(await response.json(), { error: "Authentication required" });
+    }
   });
 
   it("returns an empty cart for a logged-in user", async (t) => {
@@ -138,6 +158,45 @@ describe("persisted cart API", () => {
     assert.equal(body.items[0]!.quantity, 3);
     assert.equal(body.items[0]!.lineTotal, "30");
     assert.equal(body.subtotal, "30");
+  });
+
+  it("returns a subtotal across multiple cart items", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    const user = await createCartUser("cart-user@example.test");
+    const firstProduct = await createTestProduct({
+      price: "10.00",
+      inventoryCount: 5,
+    });
+    const secondProduct = await createTestProduct({
+      name: "API Cart Second Product",
+      price: "4.50",
+      inventoryCount: 5,
+    });
+    const token = signToken(user);
+
+    await addCartItem(token, {
+      productId: firstProduct.product.id,
+      quantity: 2,
+    });
+
+    const response = await addCartItem(token, {
+      productId: secondProduct.product.id,
+      quantity: 3,
+    });
+
+    assert.equal(response.status, 201);
+
+    const body = await response.json() as CartResponse;
+    assert.equal(body.items.length, 2);
+    assert.deepEqual(body.items.map((item) => item.productId), [
+      firstProduct.product.id,
+      secondProduct.product.id,
+    ]);
+    assert.deepEqual(body.items.map((item) => item.lineTotal), ["20", "13.5"]);
+    assert.equal(body.subtotal, "33.5");
   });
 
   it("rejects adding an item beyond inventory or for an unknown product", async (t) => {
@@ -226,6 +285,23 @@ describe("persisted cart API", () => {
     assert.equal(body.subtotal, "21.75");
   });
 
+  it("returns not found when updating or deleting an unknown cart item", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    const user = await createCartUser("cart-user@example.test");
+    const token = signToken(user);
+
+    const updateResponse = await updateCartItem(token, 999_999_999, { quantity: 1 });
+    const deleteResponse = await deleteCartItem(token, 999_999_999);
+
+    assert.equal(updateResponse.status, 404);
+    assert.deepEqual(await updateResponse.json(), { error: "Cart item not found" });
+    assert.equal(deleteResponse.status, 404);
+    assert.deepEqual(await deleteResponse.json(), { error: "Cart item not found" });
+  });
+
   it("does not update or delete another user's cart item", async (t) => {
     if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
@@ -286,34 +362,123 @@ describe("persisted cart API", () => {
     });
   });
 
-  it("rejects invalid item params and request bodies", async (t) => {
+  it("rejects invalid add item bodies", async (t) => {
     if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
       return;
     }
 
     const user = await createCartUser("cart-user@example.test");
     const token = signToken(user);
+    const invalidRequests = [
+      {
+        body: { productId: 0, quantity: 1 },
+        error: "Product id must be a positive integer",
+      },
+      {
+        body: { productId: -1, quantity: 1 },
+        error: "Product id must be a positive integer",
+      },
+      {
+        body: { productId: 1.5, quantity: 1 },
+        error: "Product id must be a positive integer",
+      },
+      {
+        body: { quantity: 1 },
+        error: "Product id must be a positive integer",
+      },
+      {
+        body: { productId: "not-a-number", quantity: 1 },
+        error: "Product id must be a positive integer",
+      },
+      {
+        body: { productId: 1 },
+        error: "Quantity must be a positive integer",
+      },
+      {
+        body: { productId: 1, quantity: 0 },
+        error: "Quantity must be a positive integer",
+      },
+      {
+        body: { productId: 1, quantity: -1 },
+        error: "Quantity must be a positive integer",
+      },
+      {
+        body: { productId: 1, quantity: 1.5 },
+        error: "Quantity must be a positive integer",
+      },
+      {
+        body: { productId: 1, quantity: "not-a-number" },
+        error: "Quantity must be a positive integer",
+      },
+    ];
 
-    const invalidAddResponse = await addCartItem(token, {
-      productId: 1,
-      quantity: 0,
-    });
-    const invalidPatchBodyResponse = await updateCartItem(token, 1, { quantity: 1.5 });
-    const invalidPatchParamResponse = await requestApp({
-      method: "PATCH",
-      path: "/api/cart/items/not-a-number",
-      headers: authHeader(token),
-      body: { quantity: 1 },
-    });
+    for (const invalidRequest of invalidRequests) {
+      const response = await addCartItem(token, invalidRequest.body);
 
-    assert.equal(invalidAddResponse.status, 400);
-    assert.deepEqual(await invalidAddResponse.json(), { error: "Quantity must be a positive integer" });
-    assert.equal(invalidPatchBodyResponse.status, 400);
-    assert.deepEqual(await invalidPatchBodyResponse.json(), { error: "Quantity must be a positive integer" });
-    assert.equal(invalidPatchParamResponse.status, 400);
-    assert.deepEqual(await invalidPatchParamResponse.json(), {
-      error: "Cart item id must be a positive integer",
-    });
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: invalidRequest.error });
+    }
+  });
+
+  it("rejects invalid update item bodies", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    const user = await createCartUser("cart-user@example.test");
+    const token = signToken(user);
+    const invalidRequests = [
+      {},
+      { quantity: 0 },
+      { quantity: -1 },
+      { quantity: 1.5 },
+      { quantity: "not-a-number" },
+    ];
+
+    for (const body of invalidRequests) {
+      const response = await updateCartItem(token, 1, body);
+
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: "Quantity must be a positive integer" });
+    }
+  });
+
+  it("rejects invalid update and delete item ids", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    const user = await createCartUser("cart-user@example.test");
+    const token = signToken(user);
+    const invalidIds = [
+      "not-a-number",
+      "0",
+      "-1",
+      "1.5",
+    ];
+
+    for (const invalidId of invalidIds) {
+      const updateResponse = await requestApp({
+        method: "PATCH",
+        path: `/api/cart/items/${invalidId}`,
+        headers: authHeader(token),
+        body: { quantity: 1 },
+      });
+      const deleteResponse = await requestApp({
+        method: "DELETE",
+        path: `/api/cart/items/${invalidId}`,
+        headers: authHeader(token),
+      });
+
+      assert.equal(updateResponse.status, 400);
+      assert.deepEqual(await updateResponse.json(), {
+        error: "Cart item id must be a positive integer",
+      });
+      assert.equal(deleteResponse.status, 400);
+      assert.deepEqual(await deleteResponse.json(), {
+        error: "Cart item id must be a positive integer",
+      });
+    }
   });
 });
 
@@ -337,7 +502,7 @@ async function createCartUser(email: string) {
   });
 }
 
-async function createTestProduct(input: { price: string; inventoryCount: number }) {
+async function createTestProduct(input: { name?: string; price: string; inventoryCount: number }) {
   const category = await prisma!.category.upsert({
     where: { slug: TEST_CATEGORY_SLUG },
     update: {},
@@ -348,7 +513,7 @@ async function createTestProduct(input: { price: string; inventoryCount: number 
   });
   const product = await prisma!.product.create({
     data: {
-      name: "API Cart Product",
+      name: input.name ?? "API Cart Product",
       description: "Product used by the cart API tests",
       price: input.price,
       imageUrl: "https://example.test/cart-product.png",
@@ -382,7 +547,7 @@ async function getCart(token: string) {
   });
 }
 
-async function addCartItem(token: string, body: { productId: number; quantity: number }) {
+async function addCartItem(token: string, body: unknown) {
   return requestApp({
     method: "POST",
     path: "/api/cart/items",
@@ -391,7 +556,7 @@ async function addCartItem(token: string, body: { productId: number; quantity: n
   });
 }
 
-async function updateCartItem(token: string, id: number, body: { quantity: number }) {
+async function updateCartItem(token: string, id: number, body: unknown) {
   return requestApp({
     method: "PATCH",
     path: `/api/cart/items/${id}`,
