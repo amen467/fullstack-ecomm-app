@@ -188,7 +188,7 @@ GET  /api/orders/:id
 ### Milestone 4: Cart
 ✓ Create cart API route shell
 ✓ Create cart page shell
-Build persisted cart API for logged-in users
+✓ Build persisted cart API for logged-in users
 Add item to cart from product detail/list
 Update quantities
 Remove items
