@@ -61,6 +61,12 @@ const client: AxiosInstance = axios.create({
   },
 });
 
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
 // Request interceptor to add auth token
 client.interceptors.request.use(
   (config) => {
@@ -78,8 +84,11 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      // TODO: Dispatch logout action
+      if (unauthorizedHandler) {
+        unauthorizedHandler();
+      } else {
+        localStorage.removeItem('token');
+      }
     }
     return Promise.reject(error);
   }

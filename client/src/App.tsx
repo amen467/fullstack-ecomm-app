@@ -1,8 +1,8 @@
 import axios from 'axios'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { authAPI, cartAPI } from './api/client'
+import { authAPI, cartAPI, setUnauthorizedHandler } from './api/client'
 import type { AppDispatch, RootState } from './store/store'
 import { logout, setLoading, setToken, setUser } from './store/slices/authSlice'
 import { clearCart, setCart } from './store/slices/cartSlice'
@@ -14,16 +14,29 @@ function App() {
   const navigate = useNavigate()
   const [hasStoredToken, setHasStoredToken] = useState(() => Boolean(localStorage.getItem('token')))
 
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('token')
+    dispatch(logout())
+    dispatch(clearCart())
+    dispatch(setLoading(false))
+    setHasStoredToken(false)
+  }, [dispatch])
+
+  useEffect(() => {
+    setUnauthorizedHandler(clearSession)
+
+    return () => {
+      setUnauthorizedHandler(null)
+    }
+  }, [clearSession])
+
   useEffect(() => {
     let isMounted = true
     const token = localStorage.getItem('token')
 
     async function hydrateSession() {
       if (!token) {
-        dispatch(logout())
-        dispatch(clearCart())
-        dispatch(setLoading(false))
-        setHasStoredToken(false)
+        clearSession()
         return
       }
 
@@ -47,10 +60,7 @@ function App() {
         }
       } catch (error) {
         if (isMounted && axios.isAxiosError(error) && error.response?.status === 401) {
-          localStorage.removeItem('token')
-          dispatch(logout())
-          dispatch(clearCart())
-          setHasStoredToken(false)
+          clearSession()
         }
       } finally {
         if (isMounted) {
@@ -64,13 +74,10 @@ function App() {
     return () => {
       isMounted = false
     }
-  }, [dispatch])
+  }, [clearSession, dispatch])
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    dispatch(logout())
-    dispatch(clearCart())
-    setHasStoredToken(false)
+    clearSession()
     navigate('/')
   }
 
