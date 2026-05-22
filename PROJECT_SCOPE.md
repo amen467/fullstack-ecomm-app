@@ -192,8 +192,8 @@ GET  /api/orders/:id
 ✓ Add item to cart from product detail/list
 ✓ Update quantities/Remove items
 ✓ Calculate subtotal from persisted cart items
-Sync frontend cart state with API
-Add cart API validation and tests
+✓ Sync frontend cart state with API
+✓ Add cart API validation and tests
 
 ### Milestone 5: Checkout and orders
 ✓ Create checkout page shell
