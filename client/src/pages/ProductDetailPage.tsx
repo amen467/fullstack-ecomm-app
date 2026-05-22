@@ -18,6 +18,8 @@ export default function ProductDetailPage() {
     const requestedProductId = productId;
 
     async function loadProduct() {
+      setIsLoading(true);
+
       try {
         const response = await productsAPI.getById(requestedProductId);
 

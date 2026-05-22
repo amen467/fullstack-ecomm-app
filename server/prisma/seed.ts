@@ -206,7 +206,7 @@ async function main() {
     }),
   ]);
 
-  console.log('✅ Created 15 products');
+  console.log('✅ Created 14 products');
 
   // Create users
   const adminPassword = await bcrypt.hash('admin123', 10);
