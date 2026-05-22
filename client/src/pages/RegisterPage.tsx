@@ -2,8 +2,9 @@ import axios from 'axios';
 import { type FormEvent, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { authAPI } from '../api/client';
+import { authAPI, cartAPI } from '../api/client';
 import { setError, setLoading, setToken, setUser } from '../store/slices/authSlice';
+import { setCart } from '../store/slices/cartSlice';
 import type { AppDispatch } from '../store/store';
 
 export default function RegisterPage() {
@@ -39,6 +40,7 @@ export default function RegisterPage() {
       localStorage.setItem('token', token);
       dispatch(setToken(token));
       dispatch(setUser(user));
+      await syncCartAfterAuth(dispatch);
       navigate(getReturnPath(location.state), { replace: true });
     } catch (error) {
       const message = getErrorMessage(error, 'Unable to create account');
@@ -128,6 +130,15 @@ export default function RegisterPage() {
       </p>
     </div>
   );
+}
+
+async function syncCartAfterAuth(dispatch: AppDispatch) {
+  try {
+    const cartResponse = await cartAPI.getCart();
+    dispatch(setCart(cartResponse.data));
+  } catch {
+    // Registration succeeded; the cart can be retried by app hydration or the cart page.
+  }
 }
 
 function getReturnPath(state: unknown) {
