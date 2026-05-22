@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import type { AppDispatch, RootState } from './store/store'
 import { logout } from './store/slices/authSlice'
+import { clearCart } from './store/slices/cartSlice'
 import './App.css'
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token')
     dispatch(logout())
+    dispatch(clearCart())
     navigate('/')
   }
 
