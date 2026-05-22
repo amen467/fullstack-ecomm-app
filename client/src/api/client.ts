@@ -27,6 +27,18 @@ export type ProductDetailResponse = {
   product: Product;
 };
 
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+  role: 'USER' | 'ADMIN';
+  createdAt?: string;
+};
+
+export type AuthUserResponse = {
+  user: User;
+};
+
 export type CartProduct = Pick<Product, 'id' | 'name' | 'price' | 'imageUrl' | 'inventoryCount' | 'category'>;
 
 export type CartItem = {
@@ -80,7 +92,7 @@ export const authAPI = {
   login: (data: { email: string; password: string }) =>
     client.post('/auth/login', data),
   logout: () => client.post('/auth/logout'),
-  getCurrentUser: () => client.get('/auth/me'),
+  getCurrentUser: () => client.get<AuthUserResponse>('/auth/me'),
 };
 
 // Product endpoints

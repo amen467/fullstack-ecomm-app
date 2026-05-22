@@ -1,19 +1,76 @@
+import axios from 'axios'
+import { useEffect, useState } from 'react'
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
+import { authAPI, cartAPI } from './api/client'
 import type { AppDispatch, RootState } from './store/store'
-import { logout } from './store/slices/authSlice'
-import { clearCart } from './store/slices/cartSlice'
+import { logout, setLoading, setToken, setUser } from './store/slices/authSlice'
+import { clearCart, setCart } from './store/slices/cartSlice'
 import './App.css'
 
 function App() {
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth)
+  const { isAuthenticated, isLoading, user } = useSelector((state: RootState) => state.auth)
   const dispatch = useDispatch<AppDispatch>()
   const navigate = useNavigate()
+  const [hasStoredToken, setHasStoredToken] = useState(() => Boolean(localStorage.getItem('token')))
+
+  useEffect(() => {
+    let isMounted = true
+    const token = localStorage.getItem('token')
+
+    async function hydrateSession() {
+      if (!token) {
+        dispatch(logout())
+        dispatch(clearCart())
+        dispatch(setLoading(false))
+        setHasStoredToken(false)
+        return
+      }
+
+      dispatch(setToken(token))
+      dispatch(setLoading(true))
+      setHasStoredToken(true)
+
+      try {
+        const userResponse = await authAPI.getCurrentUser()
+
+        if (!isMounted) {
+          return
+        }
+
+        dispatch(setUser(userResponse.data.user))
+
+        const cartResponse = await cartAPI.getCart()
+
+        if (isMounted) {
+          dispatch(setCart(cartResponse.data))
+        }
+      } catch (error) {
+        if (isMounted && axios.isAxiosError(error) && error.response?.status === 401) {
+          localStorage.removeItem('token')
+          dispatch(logout())
+          dispatch(clearCart())
+          setHasStoredToken(false)
+        }
+      } finally {
+        if (isMounted) {
+          dispatch(setLoading(false))
+        }
+      }
+    }
+
+    void hydrateSession()
+
+    return () => {
+      isMounted = false
+    }
+  }, [dispatch])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
     dispatch(logout())
     dispatch(clearCart())
+    setHasStoredToken(false)
     navigate('/')
   }
 
@@ -35,7 +92,9 @@ function App() {
               Cart
             </Link>
 
-            {isAuthenticated ? (
+            {isLoading && hasStoredToken ? (
+              <span className="text-gray-600">Loading...</span>
+            ) : isAuthenticated ? (
               <div className="flex items-center gap-4">
                 {user?.role === 'ADMIN' && (
                   <Link to="/admin" className="text-gray-700 hover:text-blue-600 font-medium">

@@ -190,9 +190,8 @@ GET  /api/orders/:id
 ✓ Create cart page shell
 ✓ Build persisted cart API for logged-in users
 ✓ Add item to cart from product detail/list
-Update quantities
-Remove items
-Calculate subtotal from persisted cart items
+✓ Update quantities/Remove items
+✓ Calculate subtotal from persisted cart items
 Sync frontend cart state with API
 Add cart API validation and tests
 
