@@ -189,7 +189,7 @@ GET  /api/orders/:id
 ✓ Create cart API route shell
 ✓ Create cart page shell
 ✓ Build persisted cart API for logged-in users
-Add item to cart from product detail/list
+✓ Add item to cart from product detail/list
 Update quantities
 Remove items
 Calculate subtotal from persisted cart items

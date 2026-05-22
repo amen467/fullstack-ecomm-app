@@ -1,7 +1,11 @@
+import axios from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { productsAPI, type Product, type ProductCategory } from '../api/client';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { cartAPI, productsAPI, type Product, type ProductCategory } from '../api/client';
+import { setCart } from '../store/slices/cartSlice';
+import type { AppDispatch, RootState } from '../store/store';
 
 export default function ProductListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -275,9 +279,40 @@ function extractCategories(products: Product[]) {
 }
 
 function ProductCard({ product }: { product: Product }) {
+  const dispatch = useDispatch<AppDispatch>();
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [cartMessage, setCartMessage] = useState<CartMessage | null>(null);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const inventoryLabel = product.inventoryCount > 0
     ? `${product.inventoryCount} in stock`
     : 'Out of stock';
+
+  async function handleAddToCart() {
+    if (!isAuthenticated && !hasStoredToken()) {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+
+    setIsAddingToCart(true);
+    setCartMessage(null);
+
+    try {
+      const response = await cartAPI.addItem({ productId: product.id, quantity: 1 });
+      dispatch(setCart(response.data));
+      setCartMessage({ type: 'success', text: 'Added to cart.' });
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        navigate('/login', { state: { from: location } });
+        return;
+      }
+
+      setCartMessage({ type: 'error', text: getErrorMessage(error, 'Unable to add item.') });
+    } finally {
+      setIsAddingToCart(false);
+    }
+  }
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -304,6 +339,19 @@ function ProductCard({ product }: { product: Product }) {
             {inventoryLabel}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => void handleAddToCart()}
+          disabled={product.inventoryCount === 0 || isAddingToCart}
+          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+        >
+          {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+        </button>
+        {cartMessage && (
+          <p className={cartMessage.type === 'success' ? 'mt-2 text-sm font-medium text-green-700' : 'mt-2 text-sm font-medium text-red-600'}>
+            {cartMessage.text}
+          </p>
+        )}
       </div>
     </article>
   );
@@ -321,3 +369,20 @@ function formatPrice(price: string) {
     currency: 'USD',
   }).format(value);
 }
+
+function hasStoredToken() {
+  return Boolean(localStorage.getItem('token'));
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError<{ error?: string }>(error)) {
+    return error.response?.data?.error ?? fallback;
+  }
+
+  return fallback;
+}
+
+type CartMessage = {
+  type: 'success' | 'error';
+  text: string;
+};

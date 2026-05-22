@@ -1,53 +1,52 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-
-export interface CartItem {
-  id: number;
-  productId: number;
-  quantity: number;
-  name?: string;
-  price?: number;
-}
+import type { CartItem, CartResponse } from '../../api/client';
 
 interface CartState {
   items: CartItem[];
-  totalAmount: number;
+  subtotal: string;
 }
 
 const initialState: CartState = {
   items: [],
-  totalAmount: 0,
+  subtotal: '0',
 };
 
 const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
-    addItem: (state, action: PayloadAction<CartItem>) => {
-      const existingItem = state.items.find(item => item.productId === action.payload.productId);
-      if (existingItem) {
-        existingItem.quantity += action.payload.quantity;
-      } else {
-        state.items.push(action.payload);
-      }
+    setCart: (state, action: PayloadAction<CartResponse>) => {
+      state.items = action.payload.items;
+      state.subtotal = action.payload.subtotal;
     },
     removeItem: (state, action: PayloadAction<number>) => {
       state.items = state.items.filter(item => item.id !== action.payload);
+      state.subtotal = calculateSubtotal(state.items);
     },
     updateQuantity: (state, action: PayloadAction<{ id: number; quantity: number }>) => {
       const item = state.items.find(item => item.id === action.payload.id);
       if (item) {
         item.quantity = action.payload.quantity;
+        item.lineTotal = calculateLineTotal(item.product.price, action.payload.quantity);
+        state.subtotal = calculateSubtotal(state.items);
       }
     },
     clearCart: (state) => {
       state.items = [];
-      state.totalAmount = 0;
-    },
-    setTotalAmount: (state, action: PayloadAction<number>) => {
-      state.totalAmount = action.payload;
+      state.subtotal = '0';
     },
   },
 });
 
-export const { addItem, removeItem, updateQuantity, clearCart, setTotalAmount } = cartSlice.actions;
+function calculateLineTotal(price: string, quantity: number) {
+  return (Number(price) * quantity).toString();
+}
+
+function calculateSubtotal(items: CartItem[]) {
+  return items
+    .reduce((total, item) => total + Number(item.lineTotal), 0)
+    .toString();
+}
+
+export const { setCart, removeItem, updateQuantity, clearCart } = cartSlice.actions;
 export default cartSlice.reducer;

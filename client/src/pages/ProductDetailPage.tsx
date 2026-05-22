@@ -1,13 +1,23 @@
+import axios from 'axios';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { productsAPI, type Product } from '../api/client';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { cartAPI, productsAPI, type Product } from '../api/client';
+import { setCart } from '../store/slices/cartSlice';
+import type { AppDispatch, RootState } from '../store/store';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
+  const dispatch = useDispatch<AppDispatch>();
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const location = useLocation();
+  const navigate = useNavigate();
   const productId = useMemo(() => parseProductId(id), [id]);
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(productId !== null);
   const [error, setError] = useState<string | null>(null);
+  const [cartMessage, setCartMessage] = useState<CartMessage | null>(null);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
     if (productId === null) {
@@ -62,6 +72,35 @@ export default function ProductDetailPage() {
     ? `${product.inventoryCount} in stock`
     : 'Out of stock';
 
+  async function handleAddToCart() {
+    if (!product) {
+      return;
+    }
+
+    if (!isAuthenticated && !hasStoredToken()) {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+
+    setIsAddingToCart(true);
+    setCartMessage(null);
+
+    try {
+      const response = await cartAPI.addItem({ productId: product.id, quantity: 1 });
+      dispatch(setCart(response.data));
+      setCartMessage({ type: 'success', text: 'Added to cart.' });
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        navigate('/login', { state: { from: location } });
+        return;
+      }
+
+      setCartMessage({ type: 'error', text: getErrorMessage(error, 'Unable to add this item to your cart.') });
+    } finally {
+      setIsAddingToCart(false);
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Link to="/products" className="mb-6 inline-block text-sm font-medium text-blue-600 hover:text-blue-700">
@@ -87,11 +126,17 @@ export default function ProductDetailPage() {
           <p className="mb-8 text-gray-700">{product.description}</p>
           <button
             type="button"
-            disabled={product.inventoryCount === 0}
+            onClick={() => void handleAddToCart()}
+            disabled={product.inventoryCount === 0 || isAddingToCart}
             className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            Add to Cart
+            {isAddingToCart ? 'Adding...' : 'Add to Cart'}
           </button>
+          {cartMessage && (
+            <p className={cartMessage.type === 'success' ? 'mt-3 text-sm font-medium text-green-700' : 'mt-3 text-sm font-medium text-red-600'}>
+              {cartMessage.text}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -157,3 +202,20 @@ function formatPrice(price: string) {
     currency: 'USD',
   }).format(value);
 }
+
+function hasStoredToken() {
+  return Boolean(localStorage.getItem('token'));
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError<{ error?: string }>(error)) {
+    return error.response?.data?.error ?? fallback;
+  }
+
+  return fallback;
+}
+
+type CartMessage = {
+  type: 'success' | 'error';
+  text: string;
+};

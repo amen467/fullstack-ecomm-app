@@ -27,6 +27,21 @@ export type ProductDetailResponse = {
   product: Product;
 };
 
+export type CartProduct = Pick<Product, 'id' | 'name' | 'price' | 'imageUrl' | 'inventoryCount' | 'category'>;
+
+export type CartItem = {
+  id: number;
+  productId: number;
+  quantity: number;
+  lineTotal: string;
+  product: CartProduct;
+};
+
+export type CartResponse = {
+  items: CartItem[];
+  subtotal: string;
+};
+
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -80,12 +95,12 @@ export const productsAPI = {
 
 // Cart endpoints
 export const cartAPI = {
-  getCart: () => client.get('/cart'),
+  getCart: () => client.get<CartResponse>('/cart'),
   addItem: (data: { productId: number; quantity: number }) =>
-    client.post('/cart/items', data),
+    client.post<CartResponse>('/cart/items', data),
   updateItem: (id: number, data: { quantity: number }) =>
-    client.patch(`/cart/items/${id}`, data),
-  removeItem: (id: number) => client.delete(`/cart/items/${id}`),
+    client.patch<CartResponse>(`/cart/items/${id}`, data),
+  removeItem: (id: number) => client.delete<CartResponse>(`/cart/items/${id}`),
 };
 
 // Order endpoints

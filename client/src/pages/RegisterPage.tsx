@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { type FormEvent, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authAPI } from '../api/client';
 import { setError, setLoading, setToken, setUser } from '../store/slices/authSlice';
 import type { AppDispatch } from '../store/store';
@@ -9,6 +9,7 @@ import type { AppDispatch } from '../store/store';
 export default function RegisterPage() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +39,7 @@ export default function RegisterPage() {
       localStorage.setItem('token', token);
       dispatch(setToken(token));
       dispatch(setUser(user));
-      navigate('/');
+      navigate(getReturnPath(location.state), { replace: true });
     } catch (error) {
       const message = getErrorMessage(error, 'Unable to create account');
       setFormError(message);
@@ -127,6 +128,26 @@ export default function RegisterPage() {
       </p>
     </div>
   );
+}
+
+function getReturnPath(state: unknown) {
+  if (
+    typeof state === 'object' &&
+    state !== null &&
+    'from' in state &&
+    typeof state.from === 'object' &&
+    state.from !== null &&
+    'pathname' in state.from &&
+    typeof state.from.pathname === 'string'
+  ) {
+    const search = 'search' in state.from && typeof state.from.search === 'string'
+      ? state.from.search
+      : '';
+
+    return `${state.from.pathname}${search}`;
+  }
+
+  return '/';
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
