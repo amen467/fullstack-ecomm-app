@@ -202,13 +202,13 @@ GET  /api/orders/:id
 ✓ Protect order routes with auth
 ✓ Add order request validation
 ✓ Mock shipping/payment form submission
-Validate the authenticated cart is not empty before checkout
-Convert cart to order in a Prisma transaction
-Re-check product inventory inside the checkout transaction
-Store order items with captured unit prices
-Decrement product inventory on checkout
-Clear cart after successful checkout
-Return serialized order payloads from order endpoints
+✓ Validate the authenticated cart is not empty before checkout
+✓ Convert cart to order in a Prisma transaction
+✓ Re-check product inventory inside the checkout transaction
+✓ Store order items with captured unit prices
+✓ Decrement product inventory on checkout
+✓ Clear cart after successful checkout
+✓ Return serialized order payloads from order endpoints
 Wire checkout form to POST /api/orders
 Redirect successful checkout to /orders/:id
 Show real order confirmation data from GET /api/orders/:id

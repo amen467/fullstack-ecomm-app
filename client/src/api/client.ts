@@ -68,6 +68,28 @@ export type CreateOrderRequest = {
   };
 };
 
+export type OrderItem = {
+  id: number;
+  productId: number;
+  quantity: number;
+  unitPrice: string;
+  lineTotal: string;
+  product: Pick<Product, 'id' | 'name' | 'imageUrl' | 'category'>;
+};
+
+export type Order = {
+  id: number;
+  userId: number;
+  status: 'PENDING' | 'COMPLETED' | 'SHIPPED';
+  totalAmount: string;
+  createdAt: string;
+  items: OrderItem[];
+};
+
+export type CreateOrderResponse = {
+  order: Order;
+};
+
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -140,7 +162,7 @@ export const cartAPI = {
 
 // Order endpoints
 export const ordersAPI = {
-  create: (data: CreateOrderRequest) => client.post('/orders', data),
+  create: (data: CreateOrderRequest) => client.post<CreateOrderResponse>('/orders', data),
   getAll: () => client.get('/orders'),
   getById: (id: number) => client.get(`/orders/${id}`),
 };
