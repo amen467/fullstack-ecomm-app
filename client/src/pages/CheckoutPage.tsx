@@ -97,8 +97,8 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      await ordersAPI.create(payload);
-      setSubmitMessage('Checkout submitted.');
+      const response = await ordersAPI.create(payload);
+      setSubmitMessage(`Order #${response.data.order.id} submitted.`);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         navigate('/login', { state: { from: location }, replace: true });
