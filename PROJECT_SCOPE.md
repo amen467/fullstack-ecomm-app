@@ -199,35 +199,49 @@ GET  /api/orders/:id
 ✓ Create checkout page shell
 ✓ Create order confirmation page shell
 ✓ Create orders API route shell
+Protect order routes with auth
+Add order request validation
 Mock shipping/payment form submission
-Convert cart to order in a transaction
+Validate the authenticated cart is not empty before checkout
+Convert cart to order in a Prisma transaction
+Re-check product inventory inside the checkout transaction
 Store order items with captured unit prices
 Decrement product inventory on checkout
-Clear cart after checkout
-Show real order confirmation data
-Add order API validation and tests
+Clear cart after successful checkout
+Return serialized order payloads from order endpoints
+Wire checkout form to POST /api/orders
+Redirect successful checkout to /orders/:id
+Show real order confirmation data from GET /api/orders/:id
+Add order API tests for success, empty cart, insufficient inventory, unauthenticated access, and order ownership
 
 ### Milestone 6: Admin panel
 ✓ Create admin dashboard/products/orders page shells
-Protect admin routes and APIs by role
+Add frontend admin route guard
+Protect admin APIs with auth and ADMIN role checks
 Product CRUD API
+Add product admin validation schemas
+Decide product delete behavior for products with existing orders
 Product create/edit/delete UI
-Inventory management
+Inventory management through product edit UI
 Order list API
 Order list UI
-Order status updates
-Admin API validation and tests
+Order status update API
+Order status update UI
+Admin dashboard stats from real product/order data
+Admin API tests for forbidden user access and admin success paths
 
 ### Milestone 7: Polish
-Loading/error states
-Responsive design
-Empty states
-Frontend form validation
-Pagination for product and order lists
+✓ Client auth logout handling on 401
+Protected route loading states to avoid auth flicker
 Consistent API error display
-Client auth logout handling on 401
+Frontend form validation for auth, checkout, and admin product forms
+Empty states for cart, checkout, products, orders, and admin lists
+Responsive design pass for customer pages
+Responsive table/card layouts for admin pages
+Pagination for product and order lists
 Accessibility pass for forms and navigation
-End-to-end happy path check
+End-to-end customer happy path check
+End-to-end admin happy path check
 
 ## 8. Recommended folder structure
 ecommerce-mock/
