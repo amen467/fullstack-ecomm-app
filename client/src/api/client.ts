@@ -54,6 +54,20 @@ export type CartResponse = {
   subtotal: string;
 };
 
+export type CreateOrderRequest = {
+  shipping: {
+    fullName: string;
+    address: string;
+    city: string;
+    zipCode: string;
+  };
+  payment: {
+    cardNumber: string;
+    expiry: string;
+    cvc: string;
+  };
+};
+
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -126,7 +140,7 @@ export const cartAPI = {
 
 // Order endpoints
 export const ordersAPI = {
-  create: (data: Record<string, unknown>) => client.post('/orders', data),
+  create: (data: CreateOrderRequest) => client.post('/orders', data),
   getAll: () => client.get('/orders'),
   getById: (id: number) => client.get(`/orders/${id}`),
 };

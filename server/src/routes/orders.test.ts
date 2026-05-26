@@ -42,6 +42,7 @@ describe("orders API route guards", () => {
         method: "POST",
         path: "/api/orders",
         headers: authHeader(token),
+        body: validCreateOrderBody(),
       }),
       requestApp({
         method: "GET",
@@ -85,6 +86,80 @@ describe("orders API route guards", () => {
       });
     }
   });
+
+  it("rejects invalid mock checkout submissions", async () => {
+    const token = signToken();
+    const invalidRequests = [
+      {
+        body: {
+          ...validCreateOrderBody(),
+          shipping: { ...validCreateOrderBody().shipping, fullName: " " },
+        },
+        error: "Full name is required",
+      },
+      {
+        body: {
+          ...validCreateOrderBody(),
+          shipping: { ...validCreateOrderBody().shipping, address: "" },
+        },
+        error: "Address is required",
+      },
+      {
+        body: {
+          ...validCreateOrderBody(),
+          shipping: { ...validCreateOrderBody().shipping, city: "" },
+        },
+        error: "City is required",
+      },
+      {
+        body: {
+          ...validCreateOrderBody(),
+          shipping: { ...validCreateOrderBody().shipping, zipCode: "1000" },
+        },
+        error: "ZIP code must be 5 digits",
+      },
+      {
+        body: {
+          ...validCreateOrderBody(),
+          payment: { ...validCreateOrderBody().payment, cardNumber: "4111 1111 nope" },
+        },
+        error: "Card number can only contain digits and spaces",
+      },
+      {
+        body: {
+          ...validCreateOrderBody(),
+          payment: { ...validCreateOrderBody().payment, cardNumber: "4111" },
+        },
+        error: "Card number must contain 13 to 19 digits",
+      },
+      {
+        body: {
+          ...validCreateOrderBody(),
+          payment: { ...validCreateOrderBody().payment, expiry: "13/25" },
+        },
+        error: "Expiry must use MM/YY format",
+      },
+      {
+        body: {
+          ...validCreateOrderBody(),
+          payment: { ...validCreateOrderBody().payment, cvc: "12" },
+        },
+        error: "CVC must be 3 or 4 digits",
+      },
+    ];
+
+    for (const invalidRequest of invalidRequests) {
+      const response = await requestApp({
+        method: "POST",
+        path: "/api/orders",
+        headers: authHeader(token),
+        body: invalidRequest.body,
+      });
+
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: invalidRequest.error });
+    }
+  });
 });
 
 function signToken() {
@@ -102,5 +177,21 @@ function signToken() {
 function authHeader(token: string) {
   return {
     authorization: `Bearer ${token}`,
+  };
+}
+
+function validCreateOrderBody() {
+  return {
+    shipping: {
+      fullName: "Test Customer",
+      address: "123 Test Street",
+      city: "Testville",
+      zipCode: "10001",
+    },
+    payment: {
+      cardNumber: "4111 1111 1111 1111",
+      expiry: "12/30",
+      cvc: "123",
+    },
   };
 }

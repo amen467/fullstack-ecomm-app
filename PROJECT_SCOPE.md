@@ -201,7 +201,7 @@ GET  /api/orders/:id
 ✓ Create orders API route shell
 ✓ Protect order routes with auth
 ✓ Add order request validation
-Mock shipping/payment form submission
+✓ Mock shipping/payment form submission
 Validate the authenticated cart is not empty before checkout
 Convert cart to order in a Prisma transaction
 Re-check product inventory inside the checkout transaction
