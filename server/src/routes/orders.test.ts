@@ -63,8 +63,24 @@ describe("orders API route guards", () => {
     }
   });
 
-  it("keeps authenticated order list endpoint as a not implemented stub", async () => {
+  it("requires an admin user for the order list endpoint", async () => {
     const token = signToken();
+    const response = await requestApp({
+      method: "GET",
+      path: "/api/orders",
+      headers: authHeader(token),
+    });
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+  });
+
+  it("keeps admin order list endpoint as a not implemented stub", async () => {
+    const token = signToken({
+      id: 1,
+      email: "orders-admin@example.test",
+      role: UserRole.ADMIN,
+    });
     const response = await requestApp({
       method: "GET",
       path: "/api/orders",

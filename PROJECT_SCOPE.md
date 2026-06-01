@@ -212,7 +212,7 @@ GET  /api/orders/:id
 ✓ Wire checkout form to POST /api/orders
 ✓ Redirect successful checkout to /orders/:id
 ✓ Show real order confirmation data from GET /api/orders/:id
-Add order API tests for success, empty cart, insufficient inventory, unauthenticated access, and order ownership
+✓ Add order API tests for success, empty cart, insufficient inventory, unauthenticated access, and order ownership
 
 ### Milestone 6: Admin panel
 ✓ Create admin dashboard/products/orders page shells

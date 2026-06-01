@@ -1,8 +1,10 @@
 import { Router } from "express";
 import type { Prisma } from "../generated/client.js";
 import { NotFoundError, ServiceUnavailableError } from "../errors/http.js";
+import { UserRole } from "../generated/enums.js";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 import { validateParams, validateQuery } from "../middleware/validation.js";
 import {
   productListQuerySchema,
@@ -49,15 +51,17 @@ router.get("/:id", validateParams(productParamsSchema), asyncHandler(async (req,
   res.json({ product: serializeProduct(product) });
 }));
 
-router.post("/", (_req, res) => {
+const requireAdmin = [requireAuth, requireRole(UserRole.ADMIN)] as const;
+
+router.post("/", ...requireAdmin, (_req, res) => {
   res.status(501).json({ error: "Not implemented" });
 });
 
-router.patch("/:id", (_req, res) => {
+router.patch("/:id", ...requireAdmin, (_req, res) => {
   res.status(501).json({ error: "Not implemented" });
 });
 
-router.delete("/:id", (_req, res) => {
+router.delete("/:id", ...requireAdmin, (_req, res) => {
   res.status(501).json({ error: "Not implemented" });
 });
 

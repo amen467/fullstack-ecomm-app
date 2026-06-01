@@ -11,6 +11,7 @@ import RegisterPage from './pages/RegisterPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminProductsPage from './pages/AdminProductsPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
+import AdminRouteGuard from './components/AdminRouteGuard';
 
 export const router = createBrowserRouter([
   {
@@ -50,16 +51,21 @@ export const router = createBrowserRouter([
         element: <RegisterPage />,
       },
       {
-        path: 'admin',
-        element: <AdminDashboard />,
-      },
-      {
-        path: 'admin/products',
-        element: <AdminProductsPage />,
-      },
-      {
-        path: 'admin/orders',
-        element: <AdminOrdersPage />,
+        element: <AdminRouteGuard />,
+        children: [
+          {
+            path: 'admin',
+            element: <AdminDashboard />,
+          },
+          {
+            path: 'admin/products',
+            element: <AdminProductsPage />,
+          },
+          {
+            path: 'admin/orders',
+            element: <AdminOrdersPage />,
+          },
+        ],
       },
     ],
   },

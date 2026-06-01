@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { BadRequestError, AuthError, NotFoundError, ServiceUnavailableError } from "../errors/http.js";
 import { Prisma } from "../generated/client.js";
+import { UserRole } from "../generated/enums.js";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 import { validateBody, validateParams } from "../middleware/validation.js";
 import { createOrderSchema, orderParamsSchema } from "../validation/orders.js";
 
@@ -82,7 +83,7 @@ router.post("/", validateBody(createOrderSchema), asyncHandler(async (req, res) 
   res.status(201).json({ order: serializeOrder(order) });
 }));
 
-router.get("/", (_req, res) => {
+router.get("/", requireRole(UserRole.ADMIN), (_req, res) => {
   res.status(501).json({ error: "Not implemented" });
 });
 
