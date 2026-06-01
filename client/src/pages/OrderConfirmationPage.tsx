@@ -7,6 +7,8 @@ export default function OrderConfirmationPage() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const orderId = Number(id);
+  const hasValidOrderId = Number.isInteger(orderId) && orderId >= 1;
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -17,11 +19,7 @@ export default function OrderConfirmationPage() {
       return;
     }
 
-    const orderId = Number(id);
-
-    if (!Number.isInteger(orderId) || orderId < 1) {
-      setPageError('Order not found');
-      setIsLoading(false);
+    if (!hasValidOrderId) {
       return;
     }
 
@@ -60,7 +58,11 @@ export default function OrderConfirmationPage() {
     return () => {
       isMounted = false;
     };
-  }, [id, location, navigate]);
+  }, [hasValidOrderId, location, navigate, orderId]);
+
+  if (!hasValidOrderId) {
+    return <OrderError message="Order not found" />;
+  }
 
   if (isLoading) {
     return (
@@ -73,19 +75,7 @@ export default function OrderConfirmationPage() {
   }
 
   if (pageError || !order) {
-    return (
-      <div className="container mx-auto max-w-2xl px-4 py-8">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-          <p className="mb-4 font-medium text-red-700">{pageError ?? 'Order not found'}</p>
-          <Link
-            to="/products"
-            className="inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
-          >
-            Continue Shopping
-          </Link>
-        </div>
-      </div>
-    );
+    return <OrderError message={pageError ?? 'Order not found'} />;
   }
 
   return (
@@ -167,6 +157,22 @@ export default function OrderConfirmationPage() {
       >
         Continue Shopping
       </Link>
+    </div>
+  );
+}
+
+function OrderError({ message }: { message: string }) {
+  return (
+    <div className="container mx-auto max-w-2xl px-4 py-8">
+      <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+        <p className="mb-4 font-medium text-red-700">{message}</p>
+        <Link
+          to="/products"
+          className="inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+        >
+          Continue Shopping
+        </Link>
+      </div>
     </div>
   );
 }
