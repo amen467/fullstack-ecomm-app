@@ -63,27 +63,16 @@ describe("orders API route guards", () => {
     }
   });
 
-  it("keeps authenticated read endpoints as not implemented stubs", async () => {
+  it("keeps authenticated order list endpoint as a not implemented stub", async () => {
     const token = signToken();
-    const requests = [
-      requestApp({
-        method: "GET",
-        path: "/api/orders",
-        headers: authHeader(token),
-      }),
-      requestApp({
-        method: "GET",
-        path: "/api/orders/1",
-        headers: authHeader(token),
-      }),
-    ];
+    const response = await requestApp({
+      method: "GET",
+      path: "/api/orders",
+      headers: authHeader(token),
+    });
 
-    for (const responsePromise of requests) {
-      const response = await responsePromise;
-
-      assert.equal(response.status, 501);
-      assert.deepEqual(await response.json(), { error: "Not implemented" });
-    }
+    assert.equal(response.status, 501);
+    assert.deepEqual(await response.json(), { error: "Not implemented" });
   });
 
   it("creates an order from the authenticated user's cart", async (t) => {
@@ -328,6 +317,96 @@ describe("orders API route guards", () => {
     assert.equal(productAfter.inventoryCount, 0);
   });
 
+  it("returns a serialized order owned by the authenticated user", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    await deleteTestOrderData();
+
+    const user = await createOrderUser("orders-user@example.test");
+    const { product, category } = await createTestProduct({
+      name: "API Orders Detail Product",
+      price: "15.25",
+      inventoryCount: 4,
+    });
+
+    await prisma!.cartItem.create({
+      data: {
+        userId: user.id,
+        productId: product.id,
+        quantity: 2,
+      },
+    });
+
+    const createResponse = await createOrder(signToken(user), validCreateOrderBody());
+    const createdOrder = (await createResponse.json() as CreateOrderResponse).order;
+    const response = await getOrder(signToken(user), createdOrder.id);
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      order: {
+        id: createdOrder.id,
+        userId: user.id,
+        status: "PENDING",
+        totalAmount: "30.5",
+        createdAt: createdOrder.createdAt,
+        items: [
+          {
+            id: createdOrder.items[0]!.id,
+            productId: product.id,
+            quantity: 2,
+            unitPrice: "15.25",
+            lineTotal: "30.5",
+            product: {
+              id: product.id,
+              name: "API Orders Detail Product",
+              imageUrl: "https://example.test/orders-product.png",
+              category: {
+                id: category.id,
+                name: "API Orders Category",
+                slug: TEST_CATEGORY_SLUG,
+              },
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it("returns not found for unknown or unowned orders", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    await deleteTestOrderData();
+
+    const user = await createOrderUser("orders-user@example.test");
+    const otherUser = await createOrderUser("orders-other-user@example.test");
+    const { product } = await createTestProduct({
+      price: "8.00",
+      inventoryCount: 3,
+    });
+
+    await prisma!.cartItem.create({
+      data: {
+        userId: otherUser.id,
+        productId: product.id,
+        quantity: 1,
+      },
+    });
+
+    const createResponse = await createOrder(signToken(otherUser), validCreateOrderBody());
+    const otherUserOrder = (await createResponse.json() as CreateOrderResponse).order;
+    const unknownResponse = await getOrder(signToken(user), 999_999_999);
+    const unownedResponse = await getOrder(signToken(user), otherUserOrder.id);
+
+    assert.equal(unknownResponse.status, 404);
+    assert.deepEqual(await unknownResponse.json(), { error: "Order not found" });
+    assert.equal(unownedResponse.status, 404);
+    assert.deepEqual(await unownedResponse.json(), { error: "Order not found" });
+  });
+
   it("rejects invalid authenticated order ids", async () => {
     const token = signToken();
     const invalidIds = [
@@ -450,6 +529,14 @@ async function createOrder(token: string, body: unknown) {
     path: "/api/orders",
     headers: authHeader(token),
     body,
+  });
+}
+
+async function getOrder(token: string, id: number) {
+  return requestApp({
+    method: "GET",
+    path: `/api/orders/${id}`,
+    headers: authHeader(token),
   });
 }
 

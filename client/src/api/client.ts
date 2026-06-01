@@ -90,6 +90,10 @@ export type CreateOrderResponse = {
   order: Order;
 };
 
+export type OrderDetailResponse = {
+  order: Order;
+};
+
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -164,7 +168,7 @@ export const cartAPI = {
 export const ordersAPI = {
   create: (data: CreateOrderRequest) => client.post<CreateOrderResponse>('/orders', data),
   getAll: () => client.get('/orders'),
-  getById: (id: number) => client.get(`/orders/${id}`),
+  getById: (id: number) => client.get<OrderDetailResponse>(`/orders/${id}`),
 };
 
 export default client;

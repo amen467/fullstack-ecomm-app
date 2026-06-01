@@ -3,7 +3,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartAPI, ordersAPI, type CreateOrderRequest } from '../api/client';
-import { setCart } from '../store/slices/cartSlice';
+import { clearCart, setCart } from '../store/slices/cartSlice';
 import type { AppDispatch, RootState } from '../store/store';
 
 const initialFormState: CreateOrderRequest = {
@@ -30,7 +30,6 @@ export default function CheckoutPage() {
   const [isLoadingCart, setIsLoadingCart] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const hasItems = items.length > 0;
 
   useEffect(() => {
@@ -79,7 +78,6 @@ export default function CheckoutPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
-    setSubmitMessage(null);
 
     if (!hasItems) {
       setFormError('Your cart is empty.');
@@ -98,7 +96,8 @@ export default function CheckoutPage() {
 
     try {
       const response = await ordersAPI.create(payload);
-      setSubmitMessage(`Order #${response.data.order.id} submitted.`);
+      dispatch(clearCart());
+      navigate(`/orders/${response.data.order.id}`, { replace: true });
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         navigate('/login', { state: { from: location }, replace: true });
@@ -158,12 +157,6 @@ export default function CheckoutPage() {
           {formError && (
             <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {formError}
-            </p>
-          )}
-
-          {submitMessage && (
-            <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {submitMessage}
             </p>
           )}
 

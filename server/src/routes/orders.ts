@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { BadRequestError, AuthError, ServiceUnavailableError } from "../errors/http.js";
+import { BadRequestError, AuthError, NotFoundError, ServiceUnavailableError } from "../errors/http.js";
 import { Prisma } from "../generated/client.js";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -86,9 +86,27 @@ router.get("/", (_req, res) => {
   res.status(501).json({ error: "Not implemented" });
 });
 
-router.get("/:id", validateParams(orderParamsSchema), (_req, res) => {
-  res.status(501).json({ error: "Not implemented" });
-});
+router.get("/:id", validateParams(orderParamsSchema), asyncHandler(async (req, res) => {
+  if (!prisma) {
+    throw new ServiceUnavailableError("Database is not available");
+  }
+
+  const userId = getAuthenticatedUserId(req);
+  const { id } = req.params as unknown as { id: number };
+  const order = await prisma.order.findFirst({
+    where: {
+      id,
+      userId,
+    },
+    select: orderSelect,
+  });
+
+  if (!order) {
+    throw new NotFoundError("Order not found");
+  }
+
+  res.json({ order: serializeOrder(order) });
+}));
 
 const cartItemSelect = {
   id: true,
