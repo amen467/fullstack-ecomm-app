@@ -216,9 +216,9 @@ GET  /api/orders/:id
 
 ### Milestone 6: Admin panel
 ✓ Create admin dashboard/products/orders page shells
-Add frontend admin route guard
-Protect admin APIs with auth and ADMIN role checks
-Product CRUD API
+✓ Add frontend admin route guard
+✓ Protect admin APIs with auth and ADMIN role checks
+✓ Product CRUD API
 Add product admin validation schemas
 Decide product delete behavior for products with existing orders
 Product create/edit/delete UI
