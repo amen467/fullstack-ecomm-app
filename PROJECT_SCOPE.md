@@ -219,8 +219,8 @@ GET  /api/orders/:id
 ✓ Add frontend admin route guard
 ✓ Protect admin APIs with auth and ADMIN role checks
 ✓ Product CRUD API
-Add product admin validation schemas
-Decide product delete behavior for products with existing orders
+✓ Add product admin validation schemas
+✓ Implement admin product delete protection
 Product create/edit/delete UI
 Inventory management through product edit UI
 Order list API
