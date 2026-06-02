@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OrderStatus } from "../generated/enums.js";
 
 const orderIdSchema = z.coerce
   .number({ error: "Order id must be a positive integer" })
@@ -46,5 +47,10 @@ export const createOrderSchema = z.object({
   }),
 });
 
+export const updateOrderStatusSchema = z.object({
+  status: z.enum(OrderStatus, { error: "Order status must be PENDING, COMPLETED, or SHIPPED" }),
+});
+
 export type OrderParams = z.infer<typeof orderParamsSchema>;
 export type CreateOrderBody = z.infer<typeof createOrderSchema>;
+export type UpdateOrderStatusBody = z.infer<typeof updateOrderStatusSchema>;

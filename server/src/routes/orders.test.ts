@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import jwt from "jsonwebtoken";
-import { UserRole } from "../generated/enums.js";
+import { OrderStatus, UserRole } from "../generated/enums.js";
 import { prisma } from "../lib/prisma.js";
 import {
   canUseDatabase,
@@ -53,6 +53,11 @@ describe("orders API route guards", () => {
         method: "GET",
         path: "/api/orders/1",
       }),
+      requestApp({
+        method: "PATCH",
+        path: "/api/orders/1/status",
+        body: { status: OrderStatus.COMPLETED },
+      }),
     ];
 
     for (const responsePromise of requests) {
@@ -70,6 +75,14 @@ describe("orders API route guards", () => {
       path: "/api/orders",
       headers: authHeader(token),
     });
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+  });
+
+  it("requires an admin user for the order status update endpoint", async () => {
+    const token = signToken();
+    const response = await updateOrderStatus(token, 1, OrderStatus.COMPLETED);
 
     assert.equal(response.status, 403);
     assert.deepEqual(await response.json(), { error: "Forbidden" });
@@ -180,6 +193,118 @@ describe("orders API route guards", () => {
         },
       },
     });
+  });
+
+  it("updates an order status for admin users and returns serialized admin order data", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    await deleteTestOrderData();
+
+    const user = await createOrderUser("orders-user@example.test");
+    const { product, category } = await createTestProduct({
+      name: "API Orders Status Product",
+      price: "9.50",
+      inventoryCount: 6,
+    });
+
+    await prisma!.cartItem.create({
+      data: {
+        userId: user.id,
+        productId: product.id,
+        quantity: 2,
+      },
+    });
+
+    const createResponse = await createOrder(signToken(user), validCreateOrderBody());
+    const createdOrder = (await createResponse.json() as CreateOrderResponse).order;
+    const adminToken = signToken({
+      id: 1,
+      email: "orders-admin@example.test",
+      role: UserRole.ADMIN,
+    });
+    const response = await updateOrderStatus(adminToken, createdOrder.id, OrderStatus.SHIPPED);
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      order: {
+        id: createdOrder.id,
+        userId: user.id,
+        status: "SHIPPED",
+        totalAmount: "19",
+        createdAt: createdOrder.createdAt,
+        customer: {
+          id: user.id,
+          name: "Orders User",
+          email: "orders-user@example.test",
+        },
+        items: [
+          {
+            id: createdOrder.items[0]!.id,
+            productId: product.id,
+            quantity: 2,
+            unitPrice: "9.5",
+            lineTotal: "19",
+            product: {
+              id: product.id,
+              name: "API Orders Status Product",
+              imageUrl: "https://example.test/orders-product.png",
+              category: {
+                id: category.id,
+                name: "API Orders Category",
+                slug: TEST_CATEGORY_SLUG,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    const storedOrder = await prisma!.order.findUniqueOrThrow({
+      where: { id: createdOrder.id },
+      select: { status: true },
+    });
+
+    assert.equal(storedOrder.status, OrderStatus.SHIPPED);
+  });
+
+  it("allows admins to set any valid order status", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    await deleteTestOrderData();
+
+    const user = await createOrderUser("orders-user@example.test");
+    const { product } = await createTestProduct({
+      price: "5.00",
+      inventoryCount: 5,
+    });
+
+    await prisma!.cartItem.create({
+      data: {
+        userId: user.id,
+        productId: product.id,
+        quantity: 1,
+      },
+    });
+
+    const createResponse = await createOrder(signToken(user), validCreateOrderBody());
+    const createdOrder = (await createResponse.json() as CreateOrderResponse).order;
+    const adminToken = signToken({
+      id: 1,
+      email: "orders-admin@example.test",
+      role: UserRole.ADMIN,
+    });
+
+    for (const status of [OrderStatus.COMPLETED, OrderStatus.SHIPPED, OrderStatus.PENDING]) {
+      const response = await updateOrderStatus(adminToken, createdOrder.id, status);
+      const body = await response.json() as AdminOrderResponse;
+
+      assert.equal(response.status, 200);
+      assert.equal(body.order.status, status);
+    }
   });
 
   it("creates an order from the authenticated user's cart", async (t) => {
@@ -537,6 +662,79 @@ describe("orders API route guards", () => {
     }
   });
 
+  it("rejects invalid admin order status update ids", async () => {
+    const token = signToken({
+      id: 1,
+      email: "orders-admin@example.test",
+      role: UserRole.ADMIN,
+    });
+    const invalidIds = [
+      "not-a-number",
+      "0",
+      "-1",
+      "1.5",
+    ];
+
+    for (const invalidId of invalidIds) {
+      const response = await requestApp({
+        method: "PATCH",
+        path: `/api/orders/${invalidId}/status`,
+        headers: authHeader(token),
+        body: { status: OrderStatus.COMPLETED },
+      });
+
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), {
+        error: "Order id must be a positive integer",
+      });
+    }
+  });
+
+  it("rejects invalid order status update bodies", async () => {
+    const token = signToken({
+      id: 1,
+      email: "orders-admin@example.test",
+      role: UserRole.ADMIN,
+    });
+    const invalidBodies = [
+      {},
+      { status: "CANCELLED" },
+      { status: "" },
+    ];
+
+    for (const body of invalidBodies) {
+      const response = await requestApp({
+        method: "PATCH",
+        path: "/api/orders/1/status",
+        headers: authHeader(token),
+        body,
+      });
+
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), {
+        error: "Order status must be PENDING, COMPLETED, or SHIPPED",
+      });
+    }
+  });
+
+  it("returns not found for unknown admin order status updates", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    await deleteTestOrderData();
+
+    const token = signToken({
+      id: 1,
+      email: "orders-admin@example.test",
+      role: UserRole.ADMIN,
+    });
+    const response = await updateOrderStatus(token, 999_999_999, OrderStatus.COMPLETED);
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: "Order not found" });
+  });
+
   it("rejects invalid mock checkout submissions", async () => {
     const token = signToken();
     const invalidRequests = [
@@ -655,6 +853,15 @@ async function getOrders(token: string) {
   });
 }
 
+async function updateOrderStatus(token: string, id: number, status: OrderStatus) {
+  return requestApp({
+    method: "PATCH",
+    path: `/api/orders/${id}/status`,
+    headers: authHeader(token),
+    body: { status },
+  });
+}
+
 async function createOrderUser(email: string) {
   return createTestUser({
     name: "Orders User",
@@ -757,11 +964,15 @@ type CreateOrderResponse = {
 };
 
 type AdminOrderListResponse = {
-  orders: Array<CreateOrderResponse["order"] & {
+  orders: AdminOrderResponse["order"][];
+};
+
+type AdminOrderResponse = {
+  order: CreateOrderResponse["order"] & {
     customer: {
       id: number;
       name: string;
       email: string;
     };
-  }>;
+  };
 };

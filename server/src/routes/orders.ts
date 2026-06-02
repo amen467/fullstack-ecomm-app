@@ -6,7 +6,13 @@ import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { validateBody, validateParams } from "../middleware/validation.js";
-import { createOrderSchema, orderParamsSchema } from "../validation/orders.js";
+import {
+  createOrderSchema,
+  orderParamsSchema,
+  updateOrderStatusSchema,
+  type OrderParams,
+  type UpdateOrderStatusBody,
+} from "../validation/orders.js";
 
 const router = Router();
 
@@ -98,6 +104,31 @@ router.get("/", requireRole(UserRole.ADMIN), asyncHandler(async (_req, res) => {
 
   res.json({ orders: orders.map(serializeAdminOrder) });
 }));
+
+router.patch(
+  "/:id/status",
+  requireRole(UserRole.ADMIN),
+  validateParams(orderParamsSchema),
+  validateBody(updateOrderStatusSchema),
+  asyncHandler(async (req, res) => {
+    if (!prisma) {
+      throw new ServiceUnavailableError("Database is not available");
+    }
+
+    const { id } = req.params as unknown as OrderParams;
+    const { status } = req.body as UpdateOrderStatusBody;
+
+    await assertOrderExists(id);
+
+    const order = await prisma.order.update({
+      where: { id },
+      data: { status },
+      select: adminOrderSelect,
+    });
+
+    res.json({ order: serializeAdminOrder(order) });
+  }),
+);
 
 router.get("/:id", validateParams(orderParamsSchema), asyncHandler(async (req, res) => {
   if (!prisma) {
@@ -217,6 +248,21 @@ function getAuthenticatedUserId(req: { user?: { id: number } }) {
   }
 
   return req.user.id;
+}
+
+async function assertOrderExists(id: number) {
+  if (!prisma) {
+    throw new ServiceUnavailableError("Database is not available");
+  }
+
+  const order = await prisma.order.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!order) {
+    throw new NotFoundError("Order not found");
+  }
 }
 
 type OrderWithItems = Prisma.OrderGetPayload<{ select: typeof orderSelect }>;

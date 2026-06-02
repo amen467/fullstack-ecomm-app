@@ -225,8 +225,8 @@ GET  /api/orders/:id
 ✓ Inventory management through product edit UI
 ✓ Order list API
 ✓ Order list UI
-Order status update API
-Order status update UI
+✓ Order status update API
+✓ Order status update UI
 Admin dashboard stats from real product/order data
 Admin API tests for forbidden user access and admin success paths
 

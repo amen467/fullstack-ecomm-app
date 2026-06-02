@@ -86,10 +86,12 @@ export type OrderItem = {
   product: Pick<Product, 'id' | 'name' | 'imageUrl' | 'category'>;
 };
 
+export type OrderStatus = 'PENDING' | 'COMPLETED' | 'SHIPPED';
+
 export type Order = {
   id: number;
   userId: number;
-  status: 'PENDING' | 'COMPLETED' | 'SHIPPED';
+  status: OrderStatus;
   totalAmount: string;
   createdAt: string;
   items: OrderItem[];
@@ -109,6 +111,10 @@ export type OrderDetailResponse = {
 
 export type AdminOrderListResponse = {
   orders: AdminOrder[];
+};
+
+export type UpdateOrderStatusResponse = {
+  order: AdminOrder;
 };
 
 const client: AxiosInstance = axios.create({
@@ -186,6 +192,8 @@ export const ordersAPI = {
   create: (data: CreateOrderRequest) => client.post<CreateOrderResponse>('/orders', data),
   getAll: () => client.get<AdminOrderListResponse>('/orders'),
   getById: (id: number) => client.get<OrderDetailResponse>(`/orders/${id}`),
+  updateStatus: (id: number, data: { status: OrderStatus }) =>
+    client.patch<UpdateOrderStatusResponse>(`/orders/${id}/status`, data),
 };
 
 export default client;
