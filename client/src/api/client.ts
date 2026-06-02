@@ -27,6 +27,15 @@ export type ProductDetailResponse = {
   product: Product;
 };
 
+export type ProductFormRequest = {
+  name: string;
+  description: string;
+  price: string;
+  imageUrl: string;
+  inventoryCount: number;
+  categoryId: number;
+};
+
 export type User = {
   id: number;
   name: string;
@@ -149,8 +158,8 @@ export const productsAPI = {
   getAll: (params?: { category?: string; search?: string }) =>
     client.get<ProductListResponse>('/products', { params }),
   getById: (id: number) => client.get<ProductDetailResponse>(`/products/${id}`),
-  create: (data: Record<string, unknown>) => client.post('/products', data),
-  update: (id: number, data: Record<string, unknown>) => client.patch(`/products/${id}`, data),
+  create: (data: ProductFormRequest) => client.post<ProductDetailResponse>('/products', data),
+  update: (id: number, data: ProductFormRequest) => client.patch<ProductDetailResponse>(`/products/${id}`, data),
   delete: (id: number) => client.delete(`/products/${id}`),
 };
 
