@@ -223,8 +223,8 @@ GET  /api/orders/:id
 ✓ Implement admin product delete protection
 ✓ Product create/edit/delete UI
 ✓ Inventory management through product edit UI
-Order list API
-Order list UI
+✓ Order list API
+✓ Order list UI
 Order status update API
 Order status update UI
 Admin dashboard stats from real product/order data

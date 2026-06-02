@@ -75,20 +75,111 @@ describe("orders API route guards", () => {
     assert.deepEqual(await response.json(), { error: "Forbidden" });
   });
 
-  it("keeps admin order list endpoint as a not implemented stub", async () => {
-    const token = signToken({
+  it("lists all orders for admin users with customer and item details newest first", async (t) => {
+    if (skipIfDatabaseUnavailable(t, hasTestDatabase)) {
+      return;
+    }
+
+    await deleteTestOrderData();
+
+    const firstUser = await createOrderUser("orders-user@example.test");
+    const secondUser = await createOrderUser("orders-other-user@example.test");
+    const firstProduct = await createTestProduct({
+      name: "API Orders Admin First Product",
+      price: "11.00",
+      inventoryCount: 5,
+    });
+    const secondProduct = await createTestProduct({
+      name: "API Orders Admin Second Product",
+      price: "7.25",
+      inventoryCount: 5,
+    });
+
+    await prisma!.cartItem.create({
+      data: {
+        userId: firstUser.id,
+        productId: firstProduct.product.id,
+        quantity: 1,
+      },
+    });
+    const firstCreateResponse = await createOrder(signToken(firstUser), validCreateOrderBody());
+    const firstOrder = (await firstCreateResponse.json() as CreateOrderResponse).order;
+
+    await prisma!.cartItem.create({
+      data: {
+        userId: secondUser.id,
+        productId: secondProduct.product.id,
+        quantity: 2,
+      },
+    });
+    const secondCreateResponse = await createOrder(signToken(secondUser), validCreateOrderBody());
+    const secondOrder = (await secondCreateResponse.json() as CreateOrderResponse).order;
+
+    const adminToken = signToken({
       id: 1,
       email: "orders-admin@example.test",
       role: UserRole.ADMIN,
     });
-    const response = await requestApp({
-      method: "GET",
-      path: "/api/orders",
-      headers: authHeader(token),
-    });
+    const response = await getOrders(adminToken);
 
-    assert.equal(response.status, 501);
-    assert.deepEqual(await response.json(), { error: "Not implemented" });
+    assert.equal(response.status, 200);
+
+    const body = await response.json() as AdminOrderListResponse;
+    const testOrders = body.orders.filter((order) => TEST_USER_EMAILS.includes(order.customer.email));
+
+    assert.equal(testOrders.length, 2);
+    assert.deepEqual(testOrders.map((order) => order.id), [
+      secondOrder.id,
+      firstOrder.id,
+    ]);
+    assert.deepEqual(testOrders.map((order) => order.customer), [
+      {
+        id: secondUser.id,
+        name: "Orders User",
+        email: "orders-other-user@example.test",
+      },
+      {
+        id: firstUser.id,
+        name: "Orders User",
+        email: "orders-user@example.test",
+      },
+    ]);
+    assert.deepEqual(testOrders.map((order) => ({
+      userId: order.userId,
+      status: order.status,
+      totalAmount: order.totalAmount,
+      itemCount: order.items.length,
+    })), [
+      {
+        userId: secondUser.id,
+        status: "PENDING",
+        totalAmount: "14.5",
+        itemCount: 1,
+      },
+      {
+        userId: firstUser.id,
+        status: "PENDING",
+        totalAmount: "11",
+        itemCount: 1,
+      },
+    ]);
+    assert.deepEqual(testOrders[0]!.items[0], {
+      id: secondOrder.items[0]!.id,
+      productId: secondProduct.product.id,
+      quantity: 2,
+      unitPrice: "7.25",
+      lineTotal: "14.5",
+      product: {
+        id: secondProduct.product.id,
+        name: "API Orders Admin Second Product",
+        imageUrl: "https://example.test/orders-product.png",
+        category: {
+          id: secondProduct.category.id,
+          name: "API Orders Category",
+          slug: TEST_CATEGORY_SLUG,
+        },
+      },
+    });
   });
 
   it("creates an order from the authenticated user's cart", async (t) => {
@@ -556,6 +647,14 @@ async function getOrder(token: string, id: number) {
   });
 }
 
+async function getOrders(token: string) {
+  return requestApp({
+    method: "GET",
+    path: "/api/orders",
+    headers: authHeader(token),
+  });
+}
+
 async function createOrderUser(email: string) {
   return createTestUser({
     name: "Orders User",
@@ -655,4 +754,14 @@ type CreateOrderResponse = {
       };
     }>;
   };
+};
+
+type AdminOrderListResponse = {
+  orders: Array<CreateOrderResponse["order"] & {
+    customer: {
+      id: number;
+      name: string;
+      email: string;
+    };
+  }>;
 };

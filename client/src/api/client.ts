@@ -95,12 +95,20 @@ export type Order = {
   items: OrderItem[];
 };
 
+export type AdminOrder = Order & {
+  customer: Pick<User, 'id' | 'name' | 'email'>;
+};
+
 export type CreateOrderResponse = {
   order: Order;
 };
 
 export type OrderDetailResponse = {
   order: Order;
+};
+
+export type AdminOrderListResponse = {
+  orders: AdminOrder[];
 };
 
 const client: AxiosInstance = axios.create({
@@ -176,7 +184,7 @@ export const cartAPI = {
 // Order endpoints
 export const ordersAPI = {
   create: (data: CreateOrderRequest) => client.post<CreateOrderResponse>('/orders', data),
-  getAll: () => client.get('/orders'),
+  getAll: () => client.get<AdminOrderListResponse>('/orders'),
   getById: (id: number) => client.get<OrderDetailResponse>(`/orders/${id}`),
 };
 

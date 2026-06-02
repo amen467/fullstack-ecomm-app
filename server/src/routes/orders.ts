@@ -83,9 +83,21 @@ router.post("/", validateBody(createOrderSchema), asyncHandler(async (req, res) 
   res.status(201).json({ order: serializeOrder(order) });
 }));
 
-router.get("/", requireRole(UserRole.ADMIN), (_req, res) => {
-  res.status(501).json({ error: "Not implemented" });
-});
+router.get("/", requireRole(UserRole.ADMIN), asyncHandler(async (_req, res) => {
+  if (!prisma) {
+    throw new ServiceUnavailableError("Database is not available");
+  }
+
+  const orders = await prisma.order.findMany({
+    orderBy: [
+      { createdAt: "desc" },
+      { id: "desc" },
+    ],
+    select: adminOrderSelect,
+  });
+
+  res.json({ orders: orders.map(serializeAdminOrder) });
+}));
 
 router.get("/:id", validateParams(orderParamsSchema), asyncHandler(async (req, res) => {
   if (!prisma) {
@@ -153,6 +165,17 @@ const orderSelect = {
   },
 } as const;
 
+const adminOrderSelect = {
+  ...orderSelect,
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  },
+} as const;
+
 function serializeOrder(order: OrderWithItems) {
   return {
     id: order.id,
@@ -168,6 +191,13 @@ function serializeOrder(order: OrderWithItems) {
       lineTotal: item.unitPrice.mul(item.quantity).toString(),
       product: item.product,
     })),
+  };
+}
+
+function serializeAdminOrder(order: AdminOrderWithItems) {
+  return {
+    ...serializeOrder(order),
+    customer: order.user,
   };
 }
 
@@ -190,5 +220,6 @@ function getAuthenticatedUserId(req: { user?: { id: number } }) {
 }
 
 type OrderWithItems = Prisma.OrderGetPayload<{ select: typeof orderSelect }>;
+type AdminOrderWithItems = Prisma.OrderGetPayload<{ select: typeof adminOrderSelect }>;
 
 export default router;
