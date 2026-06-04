@@ -117,6 +117,16 @@ export type UpdateOrderStatusResponse = {
   order: AdminOrder;
 };
 
+export type AdminDashboardStats = {
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: string;
+};
+
+export type AdminDashboardStatsResponse = {
+  stats: AdminDashboardStats;
+};
+
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -194,6 +204,11 @@ export const ordersAPI = {
   getById: (id: number) => client.get<OrderDetailResponse>(`/orders/${id}`),
   updateStatus: (id: number, data: { status: OrderStatus }) =>
     client.patch<UpdateOrderStatusResponse>(`/orders/${id}/status`, data),
+};
+
+// Admin endpoints
+export const adminAPI = {
+  getStats: () => client.get<AdminDashboardStatsResponse>('/admin/stats'),
 };
 
 export default client;

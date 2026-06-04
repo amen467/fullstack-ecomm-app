@@ -227,8 +227,8 @@ GET  /api/orders/:id
 ✓ Order list UI
 ✓ Order status update API
 ✓ Order status update UI
-Admin dashboard stats from real product/order data
-Admin API tests for forbidden user access and admin success paths
+✓ Admin dashboard stats from real product/order data
+✓ Admin API tests for forbidden user access and admin success paths
 
 ### Milestone 7: Polish
 ✓ Client auth logout handling on 401
