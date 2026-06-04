@@ -3,10 +3,11 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../store/store';
 
 export default function AdminRouteGuard() {
-  const { isAuthenticated, isLoading, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, isLoading, token, user } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
+  const isHydratingStoredSession = Boolean(token) && !user;
 
-  if (isLoading) {
+  if (isLoading || isHydratingStoredSession) {
     return (
       <div className="container mx-auto px-4 py-8">
         <p className="text-gray-600">Loading...</p>

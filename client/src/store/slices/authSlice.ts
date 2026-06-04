@@ -15,11 +15,13 @@ interface AuthState {
   error: string | null;
 }
 
+const storedToken = getStoredToken();
+
 const initialState: AuthState = {
   user: null,
-  token: null,
+  token: storedToken,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: storedToken !== null,
   error: null,
 };
 
@@ -50,3 +52,11 @@ const authSlice = createSlice({
 
 export const { setUser, setToken, logout, setLoading, setError } = authSlice.actions;
 export default authSlice.reducer;
+
+function getStoredToken() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return window.localStorage.getItem('token');
+}

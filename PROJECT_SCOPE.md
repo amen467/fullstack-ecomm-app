@@ -232,7 +232,7 @@ GET  /api/orders/:id
 
 ### Milestone 7: Polish
 ✓ Client auth logout handling on 401
-Protected route loading states to avoid auth flicker
+✓ Protected route loading states to avoid auth flicker
 Consistent API error display
 Frontend form validation for auth, checkout, and admin product forms
 Empty states for cart, checkout, products, orders, and admin lists
